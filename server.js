@@ -414,7 +414,7 @@ function isMarketOpen() {
         const currentDay = istTime.getDay(); // 0 = Sunday, 6 = Saturday
         
         // Check if it's a weekend (Saturday = 6, Sunday = 0)
-        if (currentDay === 0 || currentDay === 6) {
+        if (currentDay === 1 || currentDay === 6) {
             console.log('🏪 Market closed: Weekend');
             return false;
         }
