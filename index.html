@@ -1,0 +1,2417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nifty Option Chain Tracker - Live with Historical Charts</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background: #f8fafc; }
+        .container { max-width: 1600px; margin: 0 auto; }
+        .header { background: white; padding: 24px; border-radius: 12px; margin-bottom: 24px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 16px; }
+        .btn { padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; transition: all 0.2s; }
+        .btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
+        .btn-primary { background: #3b82f6; color: white; }
+        .btn-success { background: #10b981; color: white; }
+        .btn-danger { background: #ef4444; color: white; }
+        .btn-warning { background: #f59e0b; color: white; }
+        .btn-info { background: #06b6d4; color: white; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        
+        .auth-section { background: #f0f9ff; border: 1px solid #0284c7; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+        .auth-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; align-items: end; }
+        .form-group { display: flex; flex-direction: column; }
+        .form-group label { font-weight: 600; margin-bottom: 6px; color: #374151; }
+        .form-group input { padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; }
+        .form-group input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+        
+        .status-bar { display: flex; justify-content: space-between; align-items: center; background: #f9fafb; padding: 16px; border-radius: 8px; margin-bottom: 20px; }
+        .status-indicator { display: flex; align-items: center; gap: 8px; }
+        .status-dot { width: 12px; height: 12px; border-radius: 50%; }
+        .status-connected { background: #10b981; }
+        .status-disconnected { background: #ef4444; }
+        .status-connecting { background: #f59e0b; animation: pulse 2s infinite; }
+        
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 24px; }
+        .grid-charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); gap: 20px; margin-bottom: 24px; }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .card h3 { margin: 0 0 16px 0; font-size: 16px; font-weight: 600; color: #1f2937; }
+        .metric { display: flex; justify-content: space-between; align-items: center; margin: 6px 0; }
+        .metric-value { font-family: 'Courier New', monospace; font-weight: 600; }
+        .positive { color: #10b981; }
+        .negative { color: #ef4444; }
+        .neutral { color: #6b7280; }
+        
+        .chart-container { 
+            position: relative; 
+            height: 300px; 
+            margin-top: 10px;
+        }
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .historical-controls {
+            background: #f8fafc;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+        .historical-controls h4 {
+            margin: 0 0 12px 0;
+            color: #374151;
+        }
+        .historical-row {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .logs-section { background: white; border-radius: 12px; padding: 20px; margin-top: 24px; }
+        .logs-container { max-height: 300px; overflow-y: auto; background: #f9fafb; border-radius: 8px; padding: 16px; font-family: 'Courier New', monospace; font-size: 12px; }
+        .log-entry { margin-bottom: 8px; padding: 4px 0; border-bottom: 1px solid #e5e7eb; }
+        .log-time { color: #6b7280; }
+        .log-info { color: #3b82f6; }
+        .log-success { color: #10b981; }
+        .log-error { color: #ef4444; }
+        .log-warning { color: #f59e0b; }
+        
+        .hidden { display: none; }
+        .loading { opacity: 0.6; pointer-events: none; }
+        
+        .tracking-status { 
+            display: inline-block; 
+            padding: 4px 8px; 
+            border-radius: 4px; 
+            font-size: 12px; 
+            font-weight: 600; 
+            text-transform: uppercase; 
+            margin-left: 10px;
+        }
+        .tracking-active { background: #dcfce7; color: #166534; }
+        .tracking-inactive { background: #fee2e2; color: #991b1b; }
+        
+        .indicators-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .indicator { padding: 16px; border-radius: 8px; border: 2px solid; transition: all 0.3s; background: white; }
+        .indicator-bullish { border-color: #10b981; background: linear-gradient(135deg, #ecfdf5, #f0fdf4); }
+        .indicator-bearish { border-color: #ef4444; background: linear-gradient(135deg, #fef2f2, #fee2e2); }
+        .indicator-neutral { border-color: #6b7280; background: linear-gradient(135deg, #f9fafb, #f3f4f6); }
+        .indicator-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .indicator-title { font-weight: 600; font-size: 14px; color: #1f2937; }
+        .indicator-signal { 
+            display: flex; 
+            align-items: center; 
+            gap: 6px; 
+            font-size: 12px; 
+            font-weight: 600; 
+            text-transform: uppercase; 
+            padding: 4px 8px; 
+            border-radius: 4px; 
+        }
+        .indicator-signal.bullish { background: #dcfce7; color: #166534; }
+        .indicator-signal.bearish { background: #fee2e2; color: #991b1b; }
+        .indicator-signal.neutral { background: #f3f4f6; color: #4b5563; }
+        .indicator-value { font-family: 'Courier New', monospace; font-size: 16px; font-weight: 700; margin: 8px 0; }
+        .indicator-description { font-size: 11px; color: #6b7280; line-height: 1.4; }
+        .indicator-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+        .conditions-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .condition { padding: 16px; border-radius: 8px; border: 2px solid; transition: all 0.3s; }
+        .condition-met { border-color: #10b981; background: linear-gradient(135deg, #ecfdf5, #f0fdf4); }
+        .condition-not-met { border-color: #ef4444; background: linear-gradient(135deg, #fef2f2, #fee2e2); }
+        .condition-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .condition-title { font-weight: 600; font-size: 14px; }
+        .condition-dot { width: 14px; height: 14px; border-radius: 50%; }
+        .condition-details { font-size: 12px; color: #6b7280; margin-bottom: 8px; }
+        .condition-value { font-family: 'Courier New', monospace; font-size: 13px; font-weight: 600; }
+        
+        .signal-alert { background: linear-gradient(135deg, #fef3c7, #fed7aa); border: 2px solid #f59e0b; border-radius: 12px; padding: 24px; margin-bottom: 24px; }
+        .signal-alert h2 { color: #92400e; margin: 0 0 12px 0; font-size: 20px; }
+        .signal-alert p { color: #92400e; margin: 8px 0; font-weight: 500; }
+
+        .historical-summary {
+            background: #f0f9ff;
+            border: 1px solid #0284c7;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+        .historical-summary h4 {
+            margin: 0 0 12px 0;
+            color: #1e40af;
+        }
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+        }
+        .summary-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 14px;
+        }
+        .summary-label {
+            color: #374151;
+        }
+        .summary-value {
+            font-family: 'Courier New', monospace;
+            font-weight: 600;
+            color: #1e40af;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Authentication Section -->
+        <div class="auth-section">
+            <h2 style="margin: 0 0 16px 0; color: #1f2937;">Zerodha Kite Connect API Configuration</h2>
+            <div class="auth-form">
+                <div class="form-group">
+                    <label for="apiKey">API Key</label>
+                    <input type="text" id="apiKey" placeholder="Your Kite Connect API Key">
+                </div>
+                <div class="form-group">
+                    <label for="apiSecret">API Secret</label>
+                    <input type="password" id="apiSecret" placeholder="Your API Secret">
+                </div>
+                <div class="form-group">
+                    <label>&nbsp;</label>
+                    <button id="loginUrlBtn" class="btn btn-primary">Get Login URL</button>
+                </div>
+                <div class="form-group">
+                    <label for="requestToken">Request Token (from URL after login)</label>
+                    <input type="text" id="requestToken" placeholder="Request token from redirect URL">
+                </div>
+                <div class="form-group">
+                    <label>&nbsp;</label>
+                    <button id="generateTokenBtn" class="btn btn-success">Generate Access Token</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Status Bar -->
+        <div class="status-bar">
+            <div class="status-indicator">
+                <div class="status-dot status-disconnected" id="connectionStatus"></div>
+                <span id="connectionText">Disconnected</span>
+                <span class="tracking-status tracking-inactive" id="trackingStatus">Tracking: Stopped</span>
+            </div>
+            <div style="display: flex; gap: 16px; align-items: center;">
+                <span id="lastUpdate">Last Update: --:--:--</span>
+                <span id="userInfo">User: Not logged in</span>
+            </div>
+        </div>
+
+        <!-- Historical Data Summary -->
+        <div class="historical-summary">
+            <h4>📊 Historical Data Summary</h4>
+            <div class="summary-grid" id="historicalSummary">
+                <div class="summary-item">
+                    <span class="summary-label">Records Available:</span>
+                    <span class="summary-value" id="summaryRecords">--</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">File Size:</span>
+                    <span class="summary-value" id="summaryFileSize">--</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">Oldest Record:</span>
+                    <span class="summary-value" id="summaryOldest">--</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">Latest Record:</span>
+                    <span class="summary-value" id="summaryLatest">--</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Historical Data Controls -->
+        <div class="historical-controls">
+            <h4>📈 Historical Chart Controls</h4>
+            <div class="historical-row">
+                <label>Timeframe:</label>
+                <select id="historicalTimeframe">
+                    <option value="all">All Data</option>
+                    <option value="1h">Last 1 Hour</option>
+                    <option value="4h">Last 4 Hours</option>
+                    <option value="1d">Last 1 Day</option>
+                    <option value="7d">Last 7 Days</option>
+                    <option value="30d">Last 30 Days</option>
+                </select>
+                <label>Limit:</label>
+                <select id="historicalLimit">
+                    <option value="">No Limit</option>
+                    <option value="50">Last 50 points</option>
+                    <option value="100">Last 100 points</option>
+                    <option value="200">Last 200 points</option>
+                    <option value="500">Last 500 points</option>
+                </select>
+                <button id="loadHistoricalBtn" class="btn btn-info">📊 Load Historical Data</button>
+                <button id="exportHistoricalBtn" class="btn btn-warning">📥 Export Excel</button>
+                <button id="clearHistoricalBtn" class="btn btn-danger">🗑️ Clear Historical</button>
+            </div>
+        </div>
+
+        <!-- Main Controls -->
+        <div class="header">
+            <div class="controls">
+                <h1 style="margin: 0; color: #1f2937;">Nifty Option Chain Tracker</h1>
+                <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                    <button id="trackingBtn" class="btn btn-success" disabled>
+                        ▶ Start Tracking
+                    </button>
+                    <button id="refreshBtn" class="btn btn-warning" disabled>
+                        🔄 Refresh Data
+                    </button>
+                    <button id="testApiBtn" class="btn btn-primary">
+                        🧪 Test API
+                    </button>
+                    <button id="refreshChartsBtn" class="btn btn-info">
+                        📊 Refresh Charts
+                    </button>
+                    <button id="debugBtn" class="btn" style="background: #6b7280; color: white;">
+                        🔧 Debug Info
+                    </button>
+                    <button id="retryChartsBtn" class="btn" style="background: #dc2626; color: white;">
+                        🔄 Retry Charts
+                    </button>
+                </div>
+            </div>
+
+            <!-- Market Data Grid -->
+            <div class="grid">
+                <div class="card">
+                    <h3>🎯 Market Overview</h3>
+                    <div class="metric">
+                        <span>Nifty Spot:</span>
+                        <span class="metric-value" id="spotPrice">--</span>
+                    </div>
+                    <div class="metric">
+                        <span>ATM Strike:</span>
+                        <span class="metric-value" id="atmStrike">--</span>
+                    </div>
+                    <div class="metric">
+                        <span>Expiry:</span>
+                        <span class="metric-value" id="expiry">--</span>
+                    </div>
+                    <div class="metric">
+                        <span>Market Status:</span>
+                        <span class="metric-value" id="marketStatus">--</span>
+                    </div>
+                    <div class="metric">
+                        <span>Last Update:</span>
+                        <span class="metric-value" id="dataTimestamp">--:--:--</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>📈 ATM Call Data</h3>
+                    <div class="metric">
+                        <span>Open Interest:</span>
+                        <span class="metric-value" id="callOI">--</span>
+                    </div>
+                    <div class="metric">
+                        <span>Volume:</span>
+                        <span class="metric-value" id="callVolume">--</span>
+                    </div>
+                    <div class="metric">
+                        <span>LTP:</span>
+                        <span class="metric-value" id="callLTP">--</span>
+                    </div>
+                    <div class="metric">
+                        <span>Change:</span>
+                        <span class="metric-value" id="callChange">--</span>
+                    </div>
+                    <div class="metric">
+                        <span>IV:</span>
+                        <span class="metric-value" id="callIV">--</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>📉 ATM Put Data</h3>
+                    <div class="metric">
+                        <span>Open Interest:</span>
+                        <span class="metric-value" id="putOI">--</span>
+                    </div>
+                    <div class="metric">
+                        <span>Volume:</span>
+                        <span class="metric-value" id="putVolume">--</span>
+                    </div>
+                    <div class="metric">
+                        <span>LTP:</span>
+                        <span class="metric-value" id="putLTP">--</span>
+                    </div>
+                    <div class="metric">
+                        <span>Change:</span>
+                        <span class="metric-value" id="putChange">--</span>
+                    </div>
+                    <div class="metric">
+                        <span>IV:</span>
+                        <span class="metric-value" id="putIV">--</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>🎯 Chart Status</h3>
+                    <div class="metric">
+                        <span>Chart.js Status:</span>
+                        <span class="metric-value neutral" id="chartStatus">Loading...</span>
+                    </div>
+                    <div class="metric">
+                        <span>Historical Points:</span>
+                        <span class="metric-value" id="chartDataPoints">0</span>
+                    </div>
+                    <div class="metric">
+                        <span>Loaded Timeframe:</span>
+                        <span class="metric-value" id="chartTimeframe">--</span>
+                    </div>
+                    <div class="metric">
+                        <span>Last Chart Load:</span>
+                        <span class="metric-value" id="chartLastLoad">--</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="grid-charts">
+            <!-- NIFTY Spot Price Chart -->
+            <div class="card">
+                <div class="chart-header">
+                    <h3>📊 NIFTY Spot Price (Historical)</h3>
+                </div>
+                <div class="chart-container">
+                    <canvas id="spotChart" width="500" height="300"></canvas>
+                </div>
+            </div>
+
+            <!-- ATM Call LTP & Volume Chart -->
+            <div class="card">
+                <div class="chart-header">
+                    <h3>📈 ATM Call - LTP & Volume (Historical)</h3>
+                </div>
+                <div class="chart-container">
+                    <canvas id="callChart" width="500" height="300"></canvas>
+                </div>
+            </div>
+
+            <!-- ATM Put LTP & Volume Chart -->
+            <div class="card">
+                <div class="chart-header">
+                    <h3>📉 ATM Put - LTP & Volume (Historical)</h3>
+                </div>
+                <div class="chart-container">
+                    <canvas id="putChart" width="500" height="300"></canvas>
+                </div>
+            </div>
+
+            <!-- Combined Volume Chart -->
+            <div class="card">
+                <div class="chart-header">
+                    <h3>📊 Call vs Put Volume (Historical)</h3>
+                </div>
+                <div class="chart-container">
+                    <canvas id="volumeChart" width="500" height="300"></canvas>
+                </div>
+            </div>
+
+            <!-- Open Interest Chart -->
+            <div class="card">
+                <div class="chart-header">
+                    <h3>🔄 ATM Open Interest Trends</h3>
+                </div>
+                <div class="chart-container">
+                    <canvas id="oiChart" width="500" height="300"></canvas>
+                </div>
+            </div>
+
+            <!-- PCR Chart -->
+            <div class="card">
+                <div class="chart-header">
+                    <h3>⚖️ Put-Call Ratio (PCR)</h3>
+                </div>
+                <div class="chart-container">
+                    <canvas id="pcrChart" width="500" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Market Indicators -->
+        <h2 style="margin: 0 0 16px 0; color: #1f2937;">📊 Market Indicators</h2>
+        <div class="indicators-grid" id="indicatorsGrid">
+            <!-- Indicators will be populated by JavaScript -->
+        </div>
+
+        <!-- Signal Conditions -->
+        <h2 style="margin: 0 0 16px 0; color: #1f2937;">🚨 Signal Analysis</h2>
+        <div class="conditions-grid" id="conditionsGrid">
+            <!-- Conditions will be populated by JavaScript -->
+        </div>
+
+        <!-- Signal Alert -->
+        <div class="signal-alert hidden" id="signalAlert">
+            <h2>🚨 BEARISH BIAS SIGNAL DETECTED</h2>
+            <p><strong>Bearish Bias – Downward move expected</strong></p>
+            <p>All conditions satisfied at <span id="signalTimestamp">--:--:--</span></p>
+            <p>Confidence Level: <span id="signalConfidence">HIGH</span> | Spot Price: <span id="signalSpot">--</span></p>
+        </div>
+
+        <!-- Activity Logs -->
+        <div class="logs-section">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h3 style="margin: 0;">📝 Activity Logs</h3>
+                <button id="clearLogsBtn" class="btn" style="background: #6b7280; color: white; padding: 8px 16px; font-size: 12px;">Clear Logs</button>
+            </div>
+            <div class="logs-container" id="logsContainer">
+                <div class="log-entry log-info">
+                    <span class="log-time">[--:--:--]</span> System starting. Loading Chart.js from CloudFlare CDN (CSP compliant)...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Load Chart.js dynamically and wait for it to be ready
+        function loadChartJS() {
+            return new Promise((resolve, reject) => {
+                // Check if Chart.js is already loaded
+                if (typeof Chart !== 'undefined') {
+                    resolve();
+                    return;
+                }
+
+                const script = document.createElement('script');
+                // Use CloudFlare CDN which is allowed by CSP
+                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.min.js';
+                script.integrity = 'sha512-7U4rRB8aGAHGVad3u2jiC7GA5/1YhQcQjxKeaVms/bT66i3LVBMRcBI9KwABNWnxOSwulkuSXxZLGuyfvo7V1A==';
+                script.crossOrigin = 'anonymous';
+                script.onload = () => {
+                    // Wait a bit more for Chart to be fully available
+                    setTimeout(() => {
+                        if (typeof Chart !== 'undefined') {
+                            resolve();
+                        } else {
+                            reject(new Error('Chart.js loaded but not available'));
+                        }
+                    }, 100);
+                };
+                script.onerror = () => reject(new Error('Failed to load Chart.js from CloudFlare CDN'));
+                document.head.appendChild(script);
+            });
+        }
+    </script>
+    
+    <script>
+        // Global Variables
+        const API_BASE_URL = window.location.origin;
+        let isAuthenticated = false;
+        let isTracking = false;
+        let trackingInterval = null;
+        let accessToken = null;
+        let currentData = null;
+        let historicalData = null;
+        let chartsReady = false;
+
+        // Chart Variables
+        let spotChart = null;
+        let callChart = null;
+        let putChart = null;
+        let volumeChart = null;
+        let oiChart = null;
+        let pcrChart = null;
+
+        // Utility Functions
+        function formatNumber(num) {
+            if (typeof num !== 'number' || isNaN(num)) return '--';
+            if (num >= 10000000) return (num / 10000000).toFixed(2) + 'Cr';
+            if (num >= 100000) return (num / 100000).toFixed(2) + 'L';
+            if (num >= 1000) return (num / 1000).toFixed(2) + 'K';
+            return num.toString();
+        }
+
+        function formatTime(date = new Date()) {
+            return date.toLocaleTimeString();
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '--';
+            const date = new Date(dateStr);
+            return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+        }
+
+        function addLog(message, type = 'info') {
+            console.log(`[${type.toUpperCase()}] ${message}`);
+            
+            const logsContainer = document.getElementById('logsContainer');
+            if (!logsContainer) return;
+            
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry log-${type}`;
+            logEntry.innerHTML = `<span class="log-time">[${formatTime()}]</span> ${message}`;
+            logsContainer.insertBefore(logEntry, logsContainer.firstChild);
+            
+            while (logsContainer.children.length > 50) {
+                logsContainer.removeChild(logsContainer.lastChild);
+            }
+            logsContainer.scrollTop = 0;
+        }
+
+        function updateConnectionStatus(status, text) {
+            const statusDot = document.getElementById('connectionStatus');
+            const statusText = document.getElementById('connectionText');
+            
+            statusDot.className = `status-dot status-${status}`;
+            statusText.textContent = text;
+        }
+
+        function updateTrackingStatus(tracking) {
+            const trackingStatus = document.getElementById('trackingStatus');
+            if (tracking) {
+                trackingStatus.textContent = 'Tracking: Active';
+                trackingStatus.className = 'tracking-status tracking-active';
+            } else {
+                trackingStatus.textContent = 'Tracking: Stopped';
+                trackingStatus.className = 'tracking-status tracking-inactive';
+            }
+        }
+
+        function setButtonLoading(buttonId, loading) {
+            const button = document.getElementById(buttonId);
+            if (!button) return;
+            
+            if (loading) {
+                button.classList.add('loading');
+                button.disabled = true;
+            } else {
+                button.classList.remove('loading');
+                if (buttonId === 'trackingBtn' || buttonId === 'refreshBtn') {
+                    button.disabled = !isAuthenticated;
+                } else {
+                    button.disabled = false;
+                }
+            }
+        }
+
+        // Wait for Chart.js to load and initialize charts
+        async function initializeCharts() {
+            try {
+                addLog('🔄 Loading Chart.js from CloudFlare CDN...', 'info');
+                
+                // Wait for Chart.js to load
+                await loadChartJS();
+                
+                addLog('✅ Chart.js loaded successfully from CloudFlare', 'success');
+                addLog(`📊 Chart.js version: ${Chart.version}`, 'info');
+                
+                // Create all charts
+                addLog('🎨 Creating individual charts...', 'info');
+                createSpotChart();
+                addLog('✅ Spot chart created', 'success');
+                
+                createCallChart();
+                addLog('✅ Call chart created', 'success');
+                
+                createPutChart();
+                addLog('✅ Put chart created', 'success');
+                
+                createVolumeChart();
+                addLog('✅ Volume chart created', 'success');
+                
+                createOIChart();
+                addLog('✅ OI chart created', 'success');
+                
+                createPCRChart();
+                addLog('✅ PCR chart created', 'success');
+
+                chartsReady = true;
+                document.getElementById('chartStatus').textContent = 'Ready';
+                document.getElementById('chartStatus').className = 'metric-value positive';
+                
+                addLog('✅ All 6 charts initialized successfully', 'success');
+
+                // Load historical data if available
+                if (historicalData) {
+                    updateChartsWithHistoricalData();
+                }
+
+            } catch (error) {
+                console.error('Chart initialization error:', error);
+                addLog(`❌ Chart initialization failed: ${error.message}`, 'error');
+                addLog('🔄 Trying alternative Chart.js version...', 'warning');
+                
+                // Try alternative CDN
+                try {
+                    await loadChartJSAlternative();
+                    addLog('✅ Alternative Chart.js loaded successfully', 'success');
+                    
+                    // Retry chart creation
+                    createSpotChart();
+                    createCallChart();
+                    createPutChart();
+                    createVolumeChart();
+                    createOIChart();
+                    createPCRChart();
+
+                    chartsReady = true;
+                    document.getElementById('chartStatus').textContent = 'Ready (v3.9)';
+                    document.getElementById('chartStatus').className = 'metric-value positive';
+                    addLog('✅ All charts created with Chart.js v3.9', 'success');
+                    
+                } catch (altError) {
+                    document.getElementById('chartStatus').textContent = 'Failed';
+                    document.getElementById('chartStatus').className = 'metric-value negative';
+                    addLog('❌ All Chart.js loading attempts failed', 'error');
+                    addLog('💡 Try refreshing the page or check internet connection', 'warning');
+                    addLog('🔧 You can also try the "🔄 Retry Charts" button', 'info');
+                }
+            }
+        }
+
+        // Alternative Chart.js loading (try different version)
+        function loadChartJSAlternative() {
+            return new Promise((resolve, reject) => {
+                if (typeof Chart !== 'undefined') {
+                    resolve();
+                    return;
+                }
+
+                const script = document.createElement('script');
+                // Try different version from same CDN
+                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js';
+                script.integrity = 'sha512-ElRFoEQdI5Ht6kZvyzXhYG9NqjtkmlkfYk0wr6wHxU9JEHakS7UJZNeml5ALk+8IKlU6jDgMabC3vkumRokgJA==';
+                script.crossOrigin = 'anonymous';
+                script.onload = () => {
+                    setTimeout(() => {
+                        if (typeof Chart !== 'undefined') {
+                            resolve();
+                        } else {
+                            reject(new Error('Alternative Chart.js loaded but not available'));
+                        }
+                    }, 200);
+                };
+                script.onerror = () => reject(new Error('Failed to load alternative Chart.js from CloudFlare'));
+                document.head.appendChild(script);
+            });
+        }
+
+        // Chart creation functions
+        function createSpotChart() {
+            const canvas = document.getElementById('spotChart');
+            if (!canvas) {
+                throw new Error('Spot chart canvas not found');
+            }
+            
+            console.log('Creating spot chart...');
+            const ctx = canvas.getContext('2d');
+            spotChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['Loading...'],
+                    datasets: [{
+                        label: 'NIFTY Spot Price',
+                        data: [0],
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'NIFTY Spot Price Movement'
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Time (IST)'
+                            },
+                            ticks: {
+                                maxTicksLimit: 10
+                            }
+                        },
+                        y: {
+                            beginAtZero: false,
+                            title: {
+                                display: true,
+                                text: 'Price (₹)'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Time (IST)'
+                            },
+                            ticks: {
+                                maxTicksLimit: 10 // Limit number of time labels for better readability
+                            }
+                        }
+                    }
+                }
+            });
+            console.log('Spot chart created successfully');
+        }
+
+        function createCallChart() {
+            const canvas = document.getElementById('callChart');
+            if (!canvas) {
+                throw new Error('Call chart canvas not found');
+            }
+            
+            console.log('Creating call chart...');
+            const ctx = canvas.getContext('2d');
+            callChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['Loading...'],
+                    datasets: [
+                        {
+                            label: 'Call LTP (₹)',
+                            data: [0],
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            borderWidth: 2,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'Call Volume',
+                            data: [0],
+                            borderColor: '#f59e0b',
+                            backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                            borderWidth: 2,
+                            yAxisID: 'y1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'ATM Call LTP & Volume'
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Time (IST)'
+                            },
+                            ticks: {
+                                maxTicksLimit: 10
+                            }
+                        },
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'LTP (₹)'
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'Volume'
+                            },
+                            grid: {
+                                drawOnChartArea: false,
+                            }
+                        }
+                    }
+                }
+            });
+            console.log('Call chart created successfully');
+        }
+
+        function createPutChart() {
+            const canvas = document.getElementById('putChart');
+            if (!canvas) {
+                throw new Error('Put chart canvas not found');
+            }
+            
+            console.log('Creating put chart...');
+            const ctx = canvas.getContext('2d');
+            putChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['Loading...'],
+                    datasets: [
+                        {
+                            label: 'Put LTP (₹)',
+                            data: [0],
+                            borderColor: '#ef4444',
+                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                            borderWidth: 2,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'Put Volume',
+                            data: [0],
+                            borderColor: '#a855f7',
+                            backgroundColor: 'rgba(168, 85, 247, 0.1)',
+                            borderWidth: 2,
+                            yAxisID: 'y1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'ATM Put LTP & Volume'
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Time (IST)'
+                            },
+                            ticks: {
+                                maxTicksLimit: 10
+                            }
+                        },
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'LTP (₹)'
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'Volume'
+                            },
+                            grid: {
+                                drawOnChartArea: false,
+                            }
+                        }
+                    }
+                }
+            });
+            console.log('Put chart created successfully');
+        }
+
+        function createVolumeChart() {
+            const canvas = document.getElementById('volumeChart');
+            if (!canvas) {
+                throw new Error('Volume chart canvas not found');
+            }
+            
+            console.log('Creating volume chart...');
+            const ctx = canvas.getContext('2d');
+            volumeChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Loading...'],
+                    datasets: [
+                        {
+                            label: 'Call Volume',
+                            data: [0],
+                            backgroundColor: 'rgba(16, 185, 129, 0.7)',
+                            borderColor: '#10b981',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Put Volume',
+                            data: [0],
+                            backgroundColor: 'rgba(239, 68, 68, 0.7)',
+                            borderColor: '#ef4444',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Call vs Put Volume Comparison'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Volume'
+                            }
+                        }
+                    }
+                }
+            });
+            console.log('Volume chart created successfully');
+        }
+
+        function createOIChart() {
+            const canvas = document.getElementById('oiChart');
+            if (!canvas) {
+                throw new Error('OI chart canvas not found');
+            }
+            
+            console.log('Creating OI chart...');
+            const ctx = canvas.getContext('2d');
+            oiChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['Loading...'],
+                    datasets: [
+                        {
+                            label: 'Call OI',
+                            data: [0],
+                            borderColor: '#22c55e',
+                            backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                            borderWidth: 2,
+                            fill: false
+                        },
+                        {
+                            label: 'Put OI',
+                            data: [0],
+                            borderColor: '#dc267f',
+                            backgroundColor: 'rgba(220, 38, 127, 0.1)',
+                            borderWidth: 2,
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'ATM Open Interest Trends'
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Time (IST)'
+                            },
+                            ticks: {
+                                maxTicksLimit: 10
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Open Interest'
+                            }
+                        }
+                    }
+                }
+            });
+            console.log('OI chart created successfully');
+        }
+
+        function createPCRChart() {
+            const canvas = document.getElementById('pcrChart');
+            if (!canvas) {
+                throw new Error('PCR chart canvas not found');
+            }
+            
+            console.log('Creating PCR chart...');
+            const ctx = canvas.getContext('2d');
+            pcrChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['Loading...'],
+                    datasets: [
+                        {
+                            label: 'PCR Volume',
+                            data: [0],
+                            borderColor: '#6366f1',
+                            backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                            borderWidth: 2,
+                            fill: false
+                        },
+                        {
+                            label: 'PCR OI',
+                            data: [0],
+                            borderColor: '#8b5a2b',
+                            backgroundColor: 'rgba(139, 90, 43, 0.1)',
+                            borderWidth: 2,
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Put-Call Ratio (PCR)'
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Time (IST)'
+                            },
+                            ticks: {
+                                maxTicksLimit: 10
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Ratio'
+                            }
+                        }
+                    }
+                }
+            });
+            console.log('PCR chart created successfully');
+        }
+
+        // Update charts with historical data
+        function updateChartsWithHistoricalData() {
+            if (!chartsReady || !historicalData) {
+                addLog('⚠️ Charts not ready or no historical data', 'warning');
+                return;
+            }
+
+            try {
+                const dataLength = historicalData.timestamps ? historicalData.timestamps.length : 0;
+                addLog(`📊 Updating charts with ${dataLength} historical data points`, 'info');
+
+                if (dataLength === 0) {
+                    addLog('⚠️ Historical data is empty', 'warning');
+                    return;
+                }
+
+                // Create time-based labels from timestamps
+                const timeLabels = historicalData.timestamps.map(timestamp => {
+                    const date = new Date(timestamp);
+                    // Format as HH:MM for cleaner display
+                    return date.toLocaleTimeString('en-IN', { 
+                        hour: '2-digit', 
+                        minute: '2-digit',
+                        timeZone: 'Asia/Kolkata'
+                    });
+                });
+
+                // Update Spot Chart
+                if (spotChart && historicalData.spotPrices) {
+                    spotChart.data.labels = timeLabels;
+                    spotChart.data.datasets[0].data = historicalData.spotPrices;
+                    spotChart.options.scales.x.title.text = 'Time (IST)';
+                    spotChart.update();
+                }
+
+                // Update Call Chart
+                if (callChart && historicalData.calls) {
+                    callChart.data.labels = timeLabels;
+                    callChart.data.datasets[0].data = historicalData.calls.ltp || [];
+                    callChart.data.datasets[1].data = historicalData.calls.volume || [];
+                    callChart.options.scales.x.title.text = 'Time (IST)';
+                    callChart.update();
+                }
+
+                // Update Put Chart
+                if (putChart && historicalData.puts) {
+                    putChart.data.labels = timeLabels;
+                    putChart.data.datasets[0].data = historicalData.puts.ltp || [];
+                    putChart.data.datasets[1].data = historicalData.puts.volume || [];
+                    putChart.options.scales.x.title.text = 'Time (IST)';
+                    putChart.update();
+                }
+
+                // Update Volume Chart
+                if (volumeChart && historicalData.calls && historicalData.puts) {
+                    volumeChart.data.labels = timeLabels;
+                    volumeChart.data.datasets[0].data = historicalData.calls.volume || [];
+                    volumeChart.data.datasets[1].data = historicalData.puts.volume || [];
+                    volumeChart.options.scales.x.title.text = 'Time (IST)';
+                    volumeChart.update();
+                }
+
+                // Update OI Chart
+                if (oiChart && historicalData.calls && historicalData.puts) {
+                    oiChart.data.labels = timeLabels;
+                    oiChart.data.datasets[0].data = historicalData.calls.oi || [];
+                    oiChart.data.datasets[1].data = historicalData.puts.oi || [];
+                    oiChart.options.scales.x.title.text = 'Time (IST)';
+                    oiChart.update();
+                }
+
+                // Update PCR Chart
+                if (pcrChart && historicalData.ratios) {
+                    pcrChart.data.labels = timeLabels;
+                    pcrChart.data.datasets[0].data = historicalData.ratios.pcr_volume || [];
+                    pcrChart.data.datasets[1].data = historicalData.ratios.pcr_oi || [];
+                    pcrChart.options.scales.x.title.text = 'Time (IST)';
+                    pcrChart.update();
+                }
+
+                addLog('✅ All charts updated with timestamped historical data', 'success');
+
+            } catch (error) {
+                console.error('Chart update error:', error);
+                addLog(`❌ Chart update failed: ${error.message}`, 'error');
+            }
+        }
+
+        // API Functions
+        function apiCall(endpoint, options = {}) {
+            return new Promise((resolve, reject) => {
+                addLog(`🌐 Making API call to: ${endpoint}`, 'info');
+                
+                fetch(`${API_BASE_URL}/api/${endpoint}`, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(accessToken && { 'Authorization': `Bearer ${accessToken}` })
+                    },
+                    ...options
+                })
+                .then(response => {
+                    console.log(`API Response Status: ${response.status}`);
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('API Response Data:', data);
+                    
+                    if (!data.success && data.error) {
+                        throw new Error(data.message || data.error || 'API request failed');
+                    }
+                    
+                    resolve(data);
+                })
+                .catch(error => {
+                    console.error('API Error:', error);
+                    addLog(`❌ API Error: ${error.message}`, 'error');
+                    reject(error);
+                });
+            });
+        }
+
+        // Historical Data Functions
+        function loadHistoricalDataSummary() {
+            addLog('📊 Loading historical data summary...', 'info');
+            
+            apiCall('historical-summary')
+                .then(response => {
+                    if (response.success && response.data) {
+                        const data = response.data;
+                        
+                        document.getElementById('summaryRecords').textContent = data.records || 0;
+                        document.getElementById('summaryFileSize').textContent = data.file_size || '--';
+                        document.getElementById('summaryOldest').textContent = data.oldest_record ? 
+                            formatDate(data.oldest_record) : '--';
+                        document.getElementById('summaryLatest').textContent = data.latest_record ? 
+                            formatDate(data.latest_record) : '--';
+                        
+                        addLog(`✅ Historical summary loaded: ${data.records} records`, 'success');
+                    } else {
+                        addLog('⚠️ No historical data available yet', 'warning');
+                    }
+                })
+                .catch(error => {
+                    addLog(`❌ Error loading historical summary: ${error.message}`, 'error');
+                });
+        }
+
+        function loadHistoricalChartData() {
+            const timeframe = document.getElementById('historicalTimeframe').value;
+            const limit = document.getElementById('historicalLimit').value;
+            
+            addLog(`📊 Loading historical chart data (timeframe: ${timeframe}, limit: ${limit || 'none'})...`, 'info');
+            
+            setButtonLoading('loadHistoricalBtn', true);
+            
+            let endpoint = 'historical-data';
+            const params = new URLSearchParams();
+            
+            if (timeframe && timeframe !== 'all') {
+                params.append('timeframe', timeframe);
+            }
+            if (limit) {
+                params.append('limit', limit);
+            }
+            
+            if (params.toString()) {
+                endpoint += '?' + params.toString();
+            }
+            
+            apiCall(endpoint)
+                .then(response => {
+                    if (response.success && response.data) {
+                        historicalData = response.data;
+                        
+                        if (chartsReady) {
+                            updateChartsWithHistoricalData();
+                        } else {
+                            addLog('⚠️ Charts not ready, will update when initialized', 'warning');
+                        }
+                        
+                        document.getElementById('chartDataPoints').textContent = response.filteredRecords || 0;
+                        document.getElementById('chartTimeframe').textContent = response.timeframe || 'all';
+                        document.getElementById('chartLastLoad').textContent = formatTime();
+                        
+                        addLog(`✅ Historical data loaded: ${response.filteredRecords} points from ${response.totalRecords} total`, 'success');
+                    } else {
+                        addLog('⚠️ No historical chart data available', 'warning');
+                        document.getElementById('chartDataPoints').textContent = '0';
+                        document.getElementById('chartTimeframe').textContent = 'no data';
+                        document.getElementById('chartLastLoad').textContent = formatTime();
+                    }
+                })
+                .catch(error => {
+                    addLog(`❌ Error loading historical data: ${error.message}`, 'error');
+                    document.getElementById('chartDataPoints').textContent = 'Error';
+                    document.getElementById('chartTimeframe').textContent = 'failed';
+                    document.getElementById('chartLastLoad').textContent = formatTime();
+                })
+                .finally(() => {
+                    setButtonLoading('loadHistoricalBtn', false);
+                });
+        }
+
+        function clearHistoricalData() {
+            if (!confirm('Are you sure you want to clear all historical data? This action cannot be undone.')) {
+                return;
+            }
+            
+            addLog('🗑️ Clearing historical data...', 'warning');
+            setButtonLoading('clearHistoricalBtn', true);
+            
+            apiCall('historical-data', { method: 'DELETE' })
+                .then(response => {
+                    if (response.success) {
+                        addLog('✅ Historical data cleared successfully', 'success');
+                        historicalData = null;
+                        
+                        // Clear all charts
+                        if (chartsReady) {
+                            [spotChart, callChart, putChart, volumeChart, oiChart, pcrChart].forEach(chart => {
+                                if (chart) {
+                                    chart.data.labels = [];
+                                    chart.data.datasets.forEach(dataset => dataset.data = []);
+                                    chart.update();
+                                }
+                            });
+                        }
+                        
+                        loadHistoricalDataSummary();
+                    } else {
+                        throw new Error(response.message || 'Failed to clear data');
+                    }
+                })
+                .catch(error => {
+                    addLog(`❌ Error clearing historical data: ${error.message}`, 'error');
+                })
+                .finally(() => {
+                    setButtonLoading('clearHistoricalBtn', false);
+                });
+        }
+
+        function exportHistoricalData() {
+            addLog('📥 Exporting historical data...', 'info');
+            setButtonLoading('exportHistoricalBtn', true);
+            
+            const link = document.createElement('a');
+            link.href = `${API_BASE_URL}/api/export-historical-data`;
+            link.download = `nifty_historical_data_${new Date().toISOString().split('T')[0]}.xlsx`;
+            link.click();
+            
+            addLog('✅ Export download started', 'success');
+            setButtonLoading('exportHistoricalBtn', false);
+        }
+
+        // Authentication Functions
+        function getLoginUrl() {
+            addLog('🔍 Getting login URL...', 'info');
+            
+            const apiKey = document.getElementById('apiKey').value.trim();
+            const apiSecret = document.getElementById('apiSecret').value.trim();
+
+            if (!apiKey || !apiSecret) {
+                addLog('❌ Please enter API Key and Secret', 'error');
+                alert('Please enter both API Key and Secret');
+                return;
+            }
+
+            setButtonLoading('loginUrlBtn', true);
+            
+            apiCall('login-url')
+                .then(response => {
+                    if (response.success) {
+                        addLog('✅ Login URL generated successfully', 'success');
+                        addLog('🔗 Opening Kite Connect login page...', 'info');
+                        window.open(response.login_url, '_blank');
+                        addLog('📋 After login, copy the request_token from URL and paste above', 'warning');
+                    } else {
+                        throw new Error(response.error);
+                    }
+                })
+                .catch(error => {
+                    addLog(`❌ Error getting login URL: ${error.message}`, 'error');
+                    alert(`Error: ${error.message}`);
+                })
+                .finally(() => {
+                    setButtonLoading('loginUrlBtn', false);
+                });
+        }
+
+        function generateAccessToken() {
+            addLog('🔍 Generating access token...', 'info');
+            
+            const requestToken = document.getElementById('requestToken').value.trim();
+
+            if (!requestToken) {
+                addLog('❌ Please enter request token from redirect URL', 'error');
+                alert('Please enter the request token');
+                return;
+            }
+
+            setButtonLoading('generateTokenBtn', true);
+            updateConnectionStatus('connecting', 'Authenticating...');
+            addLog('🔐 Generating access token...', 'info');
+
+            apiCall('generate-token', {
+                method: 'POST',
+                body: JSON.stringify({ request_token: requestToken })
+            })
+                .then(response => {
+                    if (response.success) {
+                        accessToken = response.access_token;
+                        isAuthenticated = true;
+                        
+                        updateConnectionStatus('connected', 'Connected');
+                        document.getElementById('userInfo').textContent = `User: ${response.user_name}`;
+                        
+                        document.getElementById('trackingBtn').disabled = false;
+                        document.getElementById('refreshBtn').disabled = false;
+                        
+                        addLog(`✅ Successfully authenticated as ${response.user_name}`, 'success');
+                        addLog(`📊 Broker: ${response.broker} | User ID: ${response.user_id}`, 'success');
+                        
+                        setAccessToken()
+                            .then(() => {
+                                return fetchData();
+                            })
+                            .catch(error => {
+                                addLog(`❌ Error in post-auth setup: ${error.message}`, 'error');
+                            });
+                    } else {
+                        throw new Error(response.error);
+                    }
+                })
+                .catch(error => {
+                    isAuthenticated = false;
+                    updateConnectionStatus('disconnected', 'Authentication Failed');
+                    addLog(`❌ Authentication failed: ${error.message}`, 'error');
+                    alert(`Authentication failed: ${error.message}`);
+                })
+                .finally(() => {
+                    setButtonLoading('generateTokenBtn', false);
+                });
+        }
+
+        function setAccessToken() {
+            return apiCall('set-token', {
+                method: 'POST',
+                body: JSON.stringify({ access_token: accessToken })
+            })
+                .then(response => {
+                    if (response.success) {
+                        addLog('✅ Access token set on server', 'success');
+                    } else {
+                        throw new Error(response.error);
+                    }
+                })
+                .catch(error => {
+                    addLog(`❌ Error setting access token: ${error.message}`, 'error');
+                    throw error;
+                });
+        }
+
+        // Data Fetching Functions
+        function fetchData() {
+            if (!isAuthenticated) {
+                addLog('❌ Please authenticate first', 'error');
+                return Promise.reject(new Error('Not authenticated'));
+            }
+
+            addLog('📊 Fetching NIFTY option chain data...', 'info');
+            
+            return apiCall('nifty-data')
+                .then(response => {
+                    if (response.success) {
+                        currentData = response.data;
+                        updateDisplay();
+                        
+                        document.getElementById('lastUpdate').textContent = `Last Update: ${formatTime()}`;
+                        addLog('✅ Data updated successfully', 'success');
+                        
+                        // Handle market status and historical data saving
+                        if (response.market_status) {
+                            const marketStatus = response.market_status;
+                            addLog(`🏪 ${marketStatus.message}`, marketStatus.is_open ? 'success' : 'warning');
+                            
+                            // Update market status display
+                            const marketStatusEl = document.getElementById('marketStatus');
+                            marketStatusEl.textContent = marketStatus.is_open ? 'Open' : 'Closed';
+                            marketStatusEl.className = `metric-value ${marketStatus.is_open ? 'positive' : 'negative'}`;
+                        }
+                        
+                        if (response.historical_saved) {
+                            addLog('💾 New data saved to historical storage', 'info');
+                        } else if (response.market_status && !response.market_status.is_open) {
+                            addLog('⏰ Data not saved - Market is closed (9:30 AM - 3:30 PM IST)', 'info');
+                        }
+                        
+                        checkSignalConditions();
+                        updateIndicatorsDisplay();
+                    } else {
+                        throw new Error(response.error);
+                    }
+                })
+                .catch(error => {
+                    addLog(`❌ Error fetching data: ${error.message}`, 'error');
+                    throw error;
+                });
+        }
+
+        function updateDisplay() {
+            if (!currentData) return;
+
+            const atmCall = currentData.options[currentData.atm_strike]?.CE;
+            const atmPut = currentData.options[currentData.atm_strike]?.PE;
+
+            // Market Overview
+            document.getElementById('spotPrice').textContent = currentData.spot_price.toFixed(2);
+            document.getElementById('atmStrike').textContent = currentData.atm_strike.toString();
+            document.getElementById('expiry').textContent = currentData.expiry;
+            document.getElementById('dataTimestamp').textContent = formatTime();
+
+            // ATM Call Data
+            if (atmCall && atmCall !== null) {
+                document.getElementById('callOI').textContent = formatNumber(atmCall.oi);
+                document.getElementById('callVolume').textContent = formatNumber(atmCall.volume);
+                document.getElementById('callLTP').textContent = atmCall.last_price ? atmCall.last_price.toFixed(2) : '--';
+                document.getElementById('callIV').textContent = atmCall.iv ? atmCall.iv.toFixed(1) + '%' : '--';
+                
+                const callChange = atmCall.change || 0;
+                const callChangeEl = document.getElementById('callChange');
+                callChangeEl.textContent = (callChange >= 0 ? '+' : '') + callChange.toFixed(2);
+                callChangeEl.className = 'metric-value ' + (callChange >= 0 ? 'positive' : 'negative');
+            } else {
+                document.getElementById('callOI').textContent = 'No Data';
+                document.getElementById('callVolume').textContent = 'No Data';
+                document.getElementById('callLTP').textContent = 'No Data';
+                document.getElementById('callIV').textContent = 'No Data';
+                document.getElementById('callChange').textContent = 'No Data';
+            }
+
+            // ATM Put Data
+            if (atmPut && atmPut !== null) {
+                document.getElementById('putOI').textContent = formatNumber(atmPut.oi);
+                document.getElementById('putVolume').textContent = formatNumber(atmPut.volume);
+                document.getElementById('putLTP').textContent = atmPut.last_price ? atmPut.last_price.toFixed(2) : '--';
+                document.getElementById('putIV').textContent = atmPut.iv ? atmPut.iv.toFixed(1) + '%' : '--';
+                
+                const putChange = atmPut.change || 0;
+                const putChangeEl = document.getElementById('putChange');
+                putChangeEl.textContent = (putChange >= 0 ? '+' : '') + putChange.toFixed(2);
+                putChangeEl.className = 'metric-value ' + (putChange >= 0 ? 'positive' : 'negative');
+            } else {
+                document.getElementById('putOI').textContent = 'No Data';
+                document.getElementById('putVolume').textContent = 'No Data';
+                document.getElementById('putLTP').textContent = 'No Data';
+                document.getElementById('putIV').textContent = 'No Data';
+                document.getElementById('putChange').textContent = 'No Data';
+            }
+        }
+
+        // Market Indicators Functions
+        function calculateMarketIndicators() {
+            if (!currentData) return null;
+
+            const atmCall = currentData.options[currentData.atm_strike]?.CE;
+            const atmPut = currentData.options[currentData.atm_strike]?.PE;
+
+            if (!atmCall || !atmPut) {
+                addLog('⚠️ Incomplete option data for indicators calculation', 'warning');
+                return null;
+            }
+
+            const spotPrice = currentData.spot_price;
+            const atmStrike = currentData.atm_strike;
+
+            // Calculate indicators
+            const indicators = {
+                pcr_volume: {
+                    title: 'Put-Call Volume Ratio',
+                    value: atmCall.volume > 0 ? (atmPut.volume / atmCall.volume) : 0,
+                    description: 'Ratio of Put to Call volume at ATM strike. >1.2 = Bearish, <0.8 = Bullish',
+                    format: (val) => val.toFixed(2),
+                    getSignal: (val) => {
+                        if (val > 1.2) return { type: 'bearish', text: 'Bearish' };
+                        if (val < 0.8) return { type: 'bullish', text: 'Bullish' };
+                        return { type: 'neutral', text: 'Neutral' };
+                    }
+                },
+                pcr_oi: {
+                    title: 'Put-Call OI Ratio',
+                    value: atmCall.oi > 0 ? (atmPut.oi / atmCall.oi) : 0,
+                    description: 'Ratio of Put to Call Open Interest. Higher ratio indicates bearish sentiment',
+                    format: (val) => val.toFixed(2),
+                    getSignal: (val) => {
+                        if (val > 1.3) return { type: 'bearish', text: 'Bearish' };
+                        if (val < 0.7) return { type: 'bullish', text: 'Bullish' };
+                        return { type: 'neutral', text: 'Neutral' };
+                    }
+                },
+                ltp_spread: {
+                    title: 'Put-Call LTP Spread',
+                    value: atmPut.last_price - atmCall.last_price,
+                    description: 'Difference between Put and Call LTP. Positive = Put premium, Negative = Call premium',
+                    format: (val) => `₹${val.toFixed(2)}`,
+                    getSignal: (val) => {
+                        if (val > 20) return { type: 'bearish', text: 'Bearish' };
+                        if (val < -20) return { type: 'bullish', text: 'Bullish' };
+                        return { type: 'neutral', text: 'Neutral' };
+                    }
+                },
+                iv_skew: {
+                    title: 'Implied Volatility Skew',
+                    value: (atmPut.iv || 0) - (atmCall.iv || 0),
+                    description: 'Put IV minus Call IV. Positive skew indicates fear premium in puts',
+                    format: (val) => `${val.toFixed(1)}%`,
+                    getSignal: (val) => {
+                        if (val > 5) return { type: 'bearish', text: 'Bearish' };
+                        if (val < -5) return { type: 'bullish', text: 'Bullish' };
+                        return { type: 'neutral', text: 'Neutral' };
+                    }
+                },
+                total_premium: {
+                    title: 'ATM Total Premium',
+                    value: (atmCall.last_price || 0) + (atmPut.last_price || 0),
+                    description: 'Combined Call + Put premium. High values indicate uncertainty/volatility',
+                    format: (val) => `₹${val.toFixed(2)}`,
+                    getSignal: (val) => {
+                        if (val > 400) return { type: 'bearish', text: 'High Fear' };
+                        if (val < 200) return { type: 'bullish', text: 'Low Fear' };
+                        return { type: 'neutral', text: 'Moderate' };
+                    }
+                },
+                spot_atm_distance: {
+                    title: 'Spot vs ATM Distance',
+                    value: ((spotPrice - atmStrike) / atmStrike) * 100,
+                    description: 'Percentage distance of Spot from ATM. Indicates market direction bias',
+                    format: (val) => `${val > 0 ? '+' : ''}${val.toFixed(2)}%`,
+                    getSignal: (val) => {
+                        if (val > 1) return { type: 'bullish', text: 'Above ATM' };
+                        if (val < -1) return { type: 'bearish', text: 'Below ATM' };
+                        return { type: 'neutral', text: 'Near ATM' };
+                    }
+                }
+            };
+
+            return indicators;
+        }
+
+        function updateIndicatorsDisplay() {
+            const indicators = calculateMarketIndicators();
+            if (!indicators) return;
+
+            const indicatorsGrid = document.getElementById('indicatorsGrid');
+            indicatorsGrid.innerHTML = '';
+
+            Object.entries(indicators).forEach(([key, indicator]) => {
+                const signal = indicator.getSignal(indicator.value);
+                
+                const indicatorDiv = document.createElement('div');
+                indicatorDiv.className = `indicator indicator-${signal.type}`;
+                indicatorDiv.innerHTML = `
+                    <div class="indicator-header">
+                        <div class="indicator-title">${indicator.title}</div>
+                        <div class="indicator-signal ${signal.type}">
+                            <div class="indicator-dot" style="background-color: ${
+                                signal.type === 'bullish' ? '#10b981' : 
+                                signal.type === 'bearish' ? '#ef4444' : '#6b7280'
+                            }"></div>
+                            ${signal.text}
+                        </div>
+                    </div>
+                    <div class="indicator-value">${indicator.format(indicator.value)}</div>
+                    <div class="indicator-description">${indicator.description}</div>
+                `;
+                indicatorsGrid.appendChild(indicatorDiv);
+            });
+
+            // Count bullish vs bearish signals
+            const signals = Object.values(indicators).map(ind => ind.getSignal(ind.value).type);
+            const bullishCount = signals.filter(s => s === 'bullish').length;
+            const bearishCount = signals.filter(s => s === 'bearish').length;
+            const neutralCount = signals.filter(s => s === 'neutral').length;
+
+            addLog(`📊 Market Indicators: ${bullishCount} Bullish, ${bearishCount} Bearish, ${neutralCount} Neutral`, 'info');
+        }
+
+        // Signal Analysis Functions
+        function checkSignalConditions() {
+            if (!currentData) return;
+
+            const atmCall = currentData.options[currentData.atm_strike]?.CE;
+            const atmPut = currentData.options[currentData.atm_strike]?.PE;
+
+            if (!atmCall || !atmPut) {
+                addLog('⚠️ Incomplete option data for signal analysis', 'warning');
+                return;
+            }
+
+            const conditions = {
+                condition1: {
+                    title: 'ATM Call Volume > 1M',
+                    description: 'High call volume indicates activity',
+                    status: (atmCall.volume || 0) > 1000000,
+                    value: `Volume: ${formatNumber(atmCall.volume || 0)}`,
+                    details: 'Large volume indicates institutional activity'
+                },
+                condition2: {
+                    title: 'ATM Put Volume < Call Volume',
+                    description: 'Put activity lower than call activity',
+                    status: (atmPut.volume || 0) < (atmCall.volume || 0),
+                    value: `Put/Call Ratio: ${((atmPut.volume || 0) / (atmCall.volume || 1)).toFixed(2)}`,
+                    details: 'Lower put volume suggests bearish sentiment'
+                },
+                condition3: {
+                    title: 'Call LTP > Put LTP',
+                    description: 'Call options more expensive than puts',
+                    status: (atmCall.last_price || 0) > (atmPut.last_price || 0),
+                    value: `Call: ₹${(atmCall.last_price || 0).toFixed(2)} | Put: ₹${(atmPut.last_price || 0).toFixed(2)}`,
+                    details: 'Higher call prices indicate bullish bias'
+                }
+            };
+
+            updateConditionsDisplay(conditions);
+
+            const allMet = Object.values(conditions).every(c => c.status === true);
+            
+            if (allMet) {
+                showSignalAlert();
+                addLog('🚨 SIGNAL DETECTED - All conditions satisfied', 'warning');
+            } else {
+                hideSignalAlert();
+            }
+        }
+
+        function updateConditionsDisplay(conditions) {
+            const conditionsGrid = document.getElementById('conditionsGrid');
+            conditionsGrid.innerHTML = '';
+            
+            Object.entries(conditions).forEach(([key, condition]) => {
+                const conditionDiv = document.createElement('div');
+                conditionDiv.className = `condition ${condition.status ? 'condition-met' : 'condition-not-met'}`;
+                conditionDiv.innerHTML = `
+                    <div class="condition-header">
+                        <div class="condition-title">${condition.title}</div>
+                        <div class="condition-dot" style="background-color: ${condition.status ? '#10b981' : '#ef4444'}"></div>
+                    </div>
+                    <div class="condition-details">${condition.description}</div>
+                    <div class="condition-value">${condition.value}</div>
+                    <div style="font-size: 11px; color: #6b7280; margin-top: 4px;">${condition.details}</div>
+                `;
+                conditionsGrid.appendChild(conditionDiv);
+            });
+        }
+
+        function showSignalAlert() {
+            const signalAlert = document.getElementById('signalAlert');
+            signalAlert.classList.remove('hidden');
+            document.getElementById('signalTimestamp').textContent = formatTime();
+            document.getElementById('signalSpot').textContent = currentData.spot_price.toFixed(2);
+        }
+
+        function hideSignalAlert() {
+            document.getElementById('signalAlert').classList.add('hidden');
+        }
+
+        // Tracking Functions
+        function toggleTracking() {
+            addLog('🔍 Toggle tracking button clicked', 'info');
+            
+            if (!isAuthenticated) {
+                addLog('❌ Please authenticate first', 'error');
+                alert('Please authenticate with Kite Connect first');
+                return;
+            }
+            
+            if (isTracking) {
+                stopTracking();
+            } else {
+                startTracking();
+            }
+        }
+
+        function startTracking() {
+            addLog('🚀 Starting real-time tracking', 'success');
+            
+            isTracking = true;
+            updateTrackingStatus(true);
+            
+            const trackingBtn = document.getElementById('trackingBtn');
+            trackingBtn.innerHTML = '⏸ Stop Tracking';
+            trackingBtn.className = 'btn btn-danger';
+            
+            fetchData();
+            
+            trackingInterval = setInterval(() => {
+                fetchData().catch(error => {
+                    addLog(`❌ Tracking error: ${error.message}`, 'error');
+                });
+            }, 45000);
+            
+            addLog('⏰ Tracking started - Updates every 45 seconds', 'info');
+        }
+
+        function stopTracking() {
+            addLog('⏹ Stopping real-time tracking', 'info');
+            
+            isTracking = false;
+            updateTrackingStatus(false);
+            
+            const trackingBtn = document.getElementById('trackingBtn');
+            trackingBtn.innerHTML = '▶ Start Tracking';
+            trackingBtn.className = 'btn btn-success';
+            
+            if (trackingInterval) {
+                clearInterval(trackingInterval);
+                trackingInterval = null;
+            }
+            
+            addLog('✅ Tracking stopped', 'success');
+        }
+
+        function refreshData() {
+            addLog('🔄 Manual data refresh triggered', 'info');
+            
+            if (!isAuthenticated) {
+                addLog('❌ Please authenticate first', 'error');
+                alert('Please authenticate with Kite Connect first');
+                return;
+            }
+
+            setButtonLoading('refreshBtn', true);
+            
+            fetchData()
+                .then(() => {
+                    addLog('✅ Manual refresh completed', 'success');
+                })
+                .catch(error => {
+                    addLog(`❌ Manual refresh failed: ${error.message}`, 'error');
+                })
+                .finally(() => {
+                    setButtonLoading('refreshBtn', false);
+                });
+        }
+
+        function refreshCharts() {
+            addLog('📊 Refreshing charts with latest historical data...', 'info');
+            loadHistoricalChartData();
+        }
+
+        function testApiConnection() {
+            addLog('🧪 Testing API connection...', 'info');
+            
+            setButtonLoading('testApiBtn', true);
+            
+            apiCall('health')
+                .then(response => {
+                    if (response.status === 'healthy') {
+                        addLog('✅ API connection successful', 'success');
+                        addLog(`📊 Server: ${response.version} | Kite: ${response.kite_initialized}`, 'info');
+                        if (response.historical_data) {
+                            addLog(`💾 Historical: ${response.historical_data.records || 0} records`, 'info');
+                        }
+                    } else {
+                        throw new Error('Server not healthy');
+                    }
+                })
+                .catch(error => {
+                    addLog(`❌ API connection failed: ${error.message}`, 'error');
+                })
+                .finally(() => {
+                    setButtonLoading('testApiBtn', false);
+                });
+        }
+
+        function clearLogs() {
+            document.getElementById('logsContainer').innerHTML = `
+                <div class="log-entry log-info">
+                    <span class="log-time">[${formatTime()}]</span> Logs cleared.
+                </div>
+            `;
+        }
+
+        function retryCharts() {
+            addLog('🔄 Manual chart retry initiated...', 'warning');
+            
+            // Reset state
+            chartsReady = false;
+            spotChart = null;
+            callChart = null;
+            putChart = null;
+            volumeChart = null;
+            oiChart = null;
+            pcrChart = null;
+            
+            // Clear any existing Chart objects
+            if (typeof Chart !== 'undefined') {
+                try {
+                    // Destroy existing charts if they exist
+                    [spotChart, callChart, putChart, volumeChart, oiChart, pcrChart].forEach(chart => {
+                        if (chart && typeof chart.destroy === 'function') {
+                            chart.destroy();
+                        }
+                    });
+                } catch (e) {
+                    console.log('Error destroying charts:', e);
+                }
+            }
+            
+            // Reset status
+            document.getElementById('chartStatus').textContent = 'Retrying...';
+            document.getElementById('chartStatus').className = 'metric-value neutral';
+            
+            // Try to initialize charts again
+            initializeCharts();
+        }
+
+        function showDebugInfo() {
+            console.log('=== DEBUG INFO ===');
+            console.log('Charts Ready:', chartsReady);
+            console.log('Chart.js Available:', typeof Chart !== 'undefined');
+            console.log('Chart.js Object:', typeof Chart !== 'undefined' ? Chart : 'undefined');
+            console.log('Historical Data:', historicalData);
+            console.log('Current Data:', currentData);
+            console.log('Is Authenticated:', isAuthenticated);
+            console.log('Is Tracking:', isTracking);
+            console.log('Individual Charts:', {
+                spotChart: !!spotChart,
+                callChart: !!callChart,
+                putChart: !!putChart,
+                volumeChart: !!volumeChart,
+                oiChart: !!oiChart,
+                pcrChart: !!pcrChart
+            });
+            if (typeof Chart !== 'undefined') {
+                console.log('Chart.js version:', Chart.version);
+            }
+            
+            // Check current market status
+            const now = new Date();
+            const istTime = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Kolkata"}));
+            const currentHour = istTime.getHours();
+            const currentMinute = istTime.getMinutes();
+            const currentDay = istTime.getDay();
+            const isWeekend = currentDay === 0 || currentDay === 6;
+            const timeInMinutes = currentHour * 60 + currentMinute;
+            const marketOpen = !isWeekend && timeInMinutes >= 570 && timeInMinutes <= 930; // 9:30 AM to 3:30 PM
+            
+            addLog('🔧 Debug info logged to console - check browser dev tools', 'info');
+            
+            const debugInfo = `
+=== NIFTY TRACKER DEBUG INFO ===
+
+Chart.js Status:
+- Available: ${typeof Chart !== 'undefined'}
+- Charts Ready: ${chartsReady}
+${typeof Chart !== 'undefined' ? `- Version: ${Chart.version}` : '- Version: Not Available'}
+
+Individual Charts:
+- Spot Chart: ${!!spotChart ? 'Created' : 'Not Created'}
+- Call Chart: ${!!callChart ? 'Created' : 'Not Created'}
+- Put Chart: ${!!putChart ? 'Created' : 'Not Created'}
+- Volume Chart: ${!!volumeChart ? 'Created' : 'Not Created'}
+- OI Chart: ${!!oiChart ? 'Created' : 'Not Created'}
+- PCR Chart: ${!!pcrChart ? 'Created' : 'Not Created'}
+
+Market Status:
+- Current IST Time: ${istTime.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}
+- Market Hours: 9:30 AM - 3:30 PM IST (Mon-Fri)
+- Currently Open: ${marketOpen ? 'YES' : 'NO'}
+- Weekend: ${isWeekend ? 'YES' : 'NO'}
+- Data Saving: ${marketOpen ? 'ACTIVE' : 'PAUSED'}
+
+Historical Data: ${!!historicalData ? 'Available' : 'Not Available'}
+Data Points: ${historicalData?.spotPrices?.length || 0}
+Timestamps Available: ${!!historicalData?.timestamps ? 'YES' : 'NO'}
+
+Connection Status:
+- Authenticated: ${isAuthenticated}
+- Tracking: ${isTracking}
+
+Chart X-Axis: Now shows actual time stamps (HH:MM IST)
+Data Storage: Only during market hours (9:30 AM - 3:30 PM IST)
+
+Troubleshooting:
+${!chartsReady ? '❌ Charts not ready - try "🔄 Retry Charts" button' : '✅ Charts are ready'}
+${typeof Chart === 'undefined' ? '❌ Chart.js not loaded - check internet connection' : '✅ Chart.js is loaded'}
+${!historicalData ? '⚠️ No historical data - try "📊 Load Historical Data"' : '✅ Historical data loaded'}
+
+Check browser console for detailed objects.
+            `;
+            
+            alert(debugInfo);
+        }
+
+        // Event Listeners Setup
+        function setupEventListeners() {
+            addLog('🚀 Setting up event listeners', 'success');
+            
+            // Authentication buttons
+            document.getElementById('loginUrlBtn')?.addEventListener('click', (e) => {
+                e.preventDefault();
+                getLoginUrl();
+            });
+            
+            document.getElementById('generateTokenBtn')?.addEventListener('click', (e) => {
+                e.preventDefault();
+                generateAccessToken();
+            });
+            
+            // Main action buttons
+            document.getElementById('trackingBtn')?.addEventListener('click', (e) => {
+                e.preventDefault();
+                toggleTracking();
+            });
+            
+            document.getElementById('refreshBtn')?.addEventListener('click', (e) => {
+                e.preventDefault();
+                refreshData();
+            });
+            
+            document.getElementById('testApiBtn')?.addEventListener('click', (e) => {
+                e.preventDefault();
+                testApiConnection();
+            });
+            
+            document.getElementById('refreshChartsBtn')?.addEventListener('click', (e) => {
+                e.preventDefault();
+                refreshCharts();
+            });
+            
+            document.getElementById('clearLogsBtn')?.addEventListener('click', (e) => {
+                e.preventDefault();
+                clearLogs();
+            });
+
+            document.getElementById('debugBtn')?.addEventListener('click', (e) => {
+                e.preventDefault();
+                showDebugInfo();
+            });
+
+            document.getElementById('retryChartsBtn')?.addEventListener('click', (e) => {
+                e.preventDefault();
+                retryCharts();
+            });
+
+            // Historical data controls
+            document.getElementById('loadHistoricalBtn')?.addEventListener('click', (e) => {
+                e.preventDefault();
+                loadHistoricalChartData();
+            });
+
+            document.getElementById('exportHistoricalBtn')?.addEventListener('click', (e) => {
+                e.preventDefault();
+                exportHistoricalData();
+            });
+
+            document.getElementById('clearHistoricalBtn')?.addEventListener('click', (e) => {
+                e.preventDefault();
+                clearHistoricalData();
+            });
+
+            // Auto-refresh on dropdown changes
+            document.getElementById('historicalTimeframe')?.addEventListener('change', () => {
+                loadHistoricalChartData();
+            });
+
+            document.getElementById('historicalLimit')?.addEventListener('change', () => {
+                loadHistoricalChartData();
+            });
+            
+            addLog('✅ All event listeners set up successfully', 'success');
+        }
+
+        // Initialize Application
+        async function initializeApp() {
+            console.log('🚀 Initializing NIFTY Option Chain Tracker with Chart.js...');
+            addLog('🚀 System initialized. Loading Chart.js...', 'success');
+            
+            updateConnectionStatus('disconnected', 'Not Connected');
+            updateTrackingStatus(false);
+            
+            // Set initial market status
+            const now = new Date();
+            const istTime = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Kolkata"}));
+            const marketStatusEl = document.getElementById('marketStatus');
+            marketStatusEl.textContent = 'Checking...';
+            marketStatusEl.className = 'metric-value neutral';
+            
+            // Initialize empty indicators
+            const indicatorsGrid = document.getElementById('indicatorsGrid');
+            indicatorsGrid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: #6b7280; padding: 20px;">📊 Indicators will appear when data is loaded</div>';
+            
+            testApiConnection();
+            setupEventListeners();
+            loadHistoricalDataSummary();
+            
+            // Initialize charts (async)
+            await initializeCharts();
+            
+            addLog('📋 Please configure Kite Connect API credentials above', 'info');
+            addLog('🕘 Market Hours: 9:30 AM - 3:30 PM IST (Monday to Friday)', 'info');
+            addLog('📊 Market Indicators section added for technical analysis', 'info');
+            addLog('✅ All buttons and functions are working', 'success');
+        }
+
+        // Handle page unload
+        function handlePageUnload() {
+            if (trackingInterval) {
+                clearInterval(trackingInterval);
+            }
+        }
+
+        // Wait for DOM to be ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeApp);
+        } else {
+            initializeApp();
+        }
+
+        // Handle page unload
+        window.addEventListener('beforeunload', handlePageUnload);
+
+        // Expose functions for debugging
+        window.debugFunctions = {
+            fetchData: fetchData,
+            toggleTracking: toggleTracking,
+            refreshData: refreshData,
+            testApiConnection: testApiConnection,
+            loadHistoricalChartData: loadHistoricalChartData,
+            clearHistoricalData: clearHistoricalData,
+            exportHistoricalData: exportHistoricalData,
+            showDebugInfo: showDebugInfo,
+            updateChartsWithHistoricalData: updateChartsWithHistoricalData,
+            initializeCharts: initializeCharts,
+            historicalData: () => historicalData,
+            chartsReady: () => chartsReady,
+            isAuthenticated: () => isAuthenticated,
+            isTracking: () => isTracking,
+            getCurrentData: () => currentData,
+            calculateMarketIndicators: calculateMarketIndicators,
+            updateIndicatorsDisplay: updateIndicatorsDisplay,
+            checkChart: () => ({
+                available: typeof Chart !== 'undefined',
+                version: typeof Chart !== 'undefined' ? Chart.version : 'N/A',
+                chartsReady: chartsReady,
+                spotChart: !!spotChart,
+                callChart: !!callChart,
+                putChart: !!putChart,
+                volumeChart: !!volumeChart,
+                oiChart: !!oiChart,
+                pcrChart: !!pcrChart
+            })
+        };
+
+        console.log('🎯 NIFTY Option Chain Tracker loaded successfully');
+        console.log('📊 Chart system: Chart.js (reliable and proven)');
+        console.log('💾 Backend integration: Full historical data support');
+        console.log('📈 Market Indicators: 6 professional technical indicators');
+        console.log('🔧 Debug functions available: window.debugFunctions');
+    </script>
+
+    <!-- Enhanced NSE Tracker Scripts -->
+    <script src="enhanced-charts.js"></script>
+    <script src="signal-analyzer.js"></script>
+    <script src="enhanced-ui.js"></script>
+    <script src="integration.js"></script>
+
+    <!-- Additional Chart.js plugins for zoom functionality -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-zoom/2.0.1/chartjs-plugin-zoom.min.js"></script>
+
+    <script>
+    // Enhanced initialization that works with your existing code
+    (function() {
+        'use strict';
+        
+        // Wait for your existing app to initialize
+        const originalInitializeApp = window.initializeApp;
+        
+        window.initializeApp = async function() {
+            try {
+                // Call original initialization
+                if (originalInitializeApp) {
+                    await originalInitializeApp();
+                }
+                
+                // Initialize enhanced features after a short delay
+                setTimeout(async () => {
+                    if (window.nseIntegration) {
+                        await window.nseIntegration.initialize();
+                        console.log('🎉 Enhanced features loaded successfully!');
+                    }
+                }, 2000);
+                
+            } catch (error) {
+                console.error('❌ App initialization error:', error);
+            }
+        };
+        
+        // Enhanced chart creation that preserves your existing functionality
+        const originalCreateSpotChart = window.createSpotChart;
+        window.createSpotChart = function() {
+            try {
+                // Call original function
+                if (originalCreateSpotChart) {
+                    originalCreateSpotChart();
+                }
+                
+                // Enhance with new features
+                if (window.chartManager && window.spotChart) {
+                    window.chartManager.charts['spotChart'] = window.spotChart;
+                }
+            } catch (error) {
+                console.error('❌ Enhanced spot chart creation failed:', error);
+                // Fallback to original
+                if (originalCreateSpotChart) {
+                    originalCreateSpotChart();
+                }
+            }
+        };
+        
+        // Similar enhancements for other charts
+        ['Call', 'Put', 'Volume', 'OI', 'PCR'].forEach(chartType => {
+            const originalFunction = window[`create${chartType}Chart`];
+            const chartId = `${chartType.toLowerCase()}Chart`;
+            
+            window[`create${chartType}Chart`] = function() {
+                try {
+                    if (originalFunction) {
+                        originalFunction();
+                    }
+                    
+                    if (window.chartManager && window[chartId]) {
+                        window.chartManager.charts[chartId] = window[chartId];
+                    }
+                } catch (error) {
+                    console.error(`❌ Enhanced ${chartType} chart creation failed:`, error);
+                    if (originalFunction) {
+                        originalFunction();
+                    }
+                }
+            };
+        });
+        
+        // Add enhanced features to existing buttons
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add enhanced functionality to existing buttons
+            const existingButtons = document.querySelectorAll('.btn');
+            existingButtons.forEach(button => {
+                if (!button.classList.contains('enhanced')) {
+                    button.classList.add('enhanced');
+                    
+                    // Add loading state on click
+                    button.addEventListener('click', function() {
+                        if (!this.disabled) {
+                            this.style.opacity = '0.7';
+                            setTimeout(() => {
+                                this.style.opacity = '1';
+                            }, 1000);
+                        }
+                    });
+                }
+            });
+        });
+        
+    })();
+    </script>
+
+    <style>
+    /* Enhanced Features Styles */
+    .enhanced-features {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 10px 20px;
+        border-radius: 8px;
+        margin: 10px 0;
+        text-align: center;
+        font-weight: 600;
+    }
+
+    .feature-badge {
+        display: inline-block;
+        background: rgba(255, 255, 255, 0.2);
+        padding: 4px 8px;
+        border-radius: 4px;
+        margin: 2px;
+        font-size: 12px;
+    }
+
+    /* Enhanced button styles */
+    .btn.enhanced {
+        position: relative;
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+
+    .btn.enhanced:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+
+    .btn.enhanced:active {
+        transform: translateY(0);
+    }
+
+    /* Pulse animation for important alerts */
+    @keyframes pulse-glow {
+        0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
+        70% { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+    }
+
+    .pulse-alert {
+        animation: pulse-glow 2s infinite;
+    }
+
+    /* Improved chart container */
+    .chart-container {
+        position: relative;
+        background: white;
+        border-radius: 8px;
+        padding: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    /* Loading overlay */
+    .loading-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255, 255, 255, 0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        z-index: 10;
+    }
+
+    .loading-spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #3498db;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    /* Responsive improvements */
+    @media (max-width: 768px) {
+        .time-range-buttons {
+            flex-direction: column;
+            gap: 4px;
+        }
+        
+        .btn-time-range {
+            width: 100%;
+        }
+        
+        .signal-summary {
+            grid-template-columns: 1fr;
+            gap: 16px;
+        }
+        
+        .strength-bar {
+            width: 100%;
+        }
+    }
+
+    /* Dark mode support */
+    @media (prefers-color-scheme: dark) {
+        .signal-panel, .alerts-panel {
+            background: #1f2937;
+            color: white;
+        }
+        
+        .recommendation-panel {
+            background: #1e3a8a;
+            border-color: #3b82f6;
+        }
+        
+        .signal-summary {
+            background: #374151;
+        }
+    }
+    </style>
+
+    <!-- Feature announcement banner -->
+    <div class="enhanced-features" id="featureBanner" style="display: none;">
+        🎉 Enhanced Features Loaded! 
+        <span class="feature-badge">Time Range Selection</span>
+        <span class="feature-badge">Advanced Signals</span>
+        <span class="feature-badge">Live Alerts</span>
+        <span class="feature-badge">Improved Charts</span>
+        <button onclick="this.parentElement.style.display='none'" style="float: right; background: none; border: none; color: white; cursor: pointer;">×</button>
+    </div>
+
+    <script>
+    // Show feature banner after initialization
+    setTimeout(() => {
+        const banner = document.getElementById('featureBanner');
+        if (banner) {
+            banner.style.display = 'block';
+            // Auto-hide after 10 seconds
+            setTimeout(() => {
+                banner.style.display = 'none';
+            }, 10000);
+        }
+    }, 3000);
+    </script>
+</body>
+</html>
