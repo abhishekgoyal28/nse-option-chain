@@ -323,8 +323,8 @@ function isMarketOpen() {
         }
         
         // Market hours: 9:30 AM to 3:30 PM IST
-        const marketOpenHour = 9;
-        const marketOpenMinute = 30;
+        const marketOpenHour = 0;
+        const marketOpenMinute = 0;
         const marketCloseHour = 15;
         const marketCloseMinute = 30;
         
