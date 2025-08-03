@@ -83,6 +83,88 @@ function initializeKiteConnect() {
 let latestOptionData = null;
 let dataFetchInterval = null;
 
+// ==================== RATE LIMITING FUNCTIONS ====================
+
+// Rate limiter for Kite API calls (max 2 requests per second)
+class RateLimiter {
+    constructor(maxRequests = 2, timeWindow = 1000) {
+        this.maxRequests = maxRequests;
+        this.timeWindow = timeWindow;
+        this.requests = [];
+    }
+
+    async waitForSlot() {
+        const now = Date.now();
+        
+        // Remove requests older than time window
+        this.requests = this.requests.filter(time => now - time < this.timeWindow);
+        
+        // If we're at the limit, wait
+        if (this.requests.length >= this.maxRequests) {
+            const oldestRequest = Math.min(...this.requests);
+            const waitTime = this.timeWindow - (now - oldestRequest) + 10; // +10ms buffer
+            
+            if (waitTime > 0) {
+                console.log(`⏳ Rate limit: waiting ${waitTime}ms before next request`);
+                await new Promise(resolve => setTimeout(resolve, waitTime));
+            }
+        }
+        
+        // Record this request
+        this.requests.push(Date.now());
+    }
+}
+
+const rateLimiter = new RateLimiter(2, 1000); // 2 requests per second
+
+// Function to fetch quotes with rate limiting
+async function fetchQuotesWithRateLimit(kiteConnect, tokens) {
+    const quotes = {};
+    const errors = [];
+    
+    console.log(`🔄 Fetching quotes for ${tokens.length} tokens (max 2 req/sec)...`);
+    
+    for (let i = 0; i < tokens.length; i++) {
+        const token = tokens[i];
+        
+        try {
+            // Wait for rate limit slot
+            await rateLimiter.waitForSlot();
+            
+            console.log(`📊 Fetching quote ${i + 1}/${tokens.length}: ${token}`);
+            
+            // Make individual request for single token
+            const quote = await kiteConnect.getQuote([token]);
+            
+            if (quote && quote[token]) {
+                quotes[token] = quote[token];
+                console.log(`✅ Got quote for ${token}: LTP=${quote[token].last_price}`);
+            } else {
+                console.log(`⚠️ No data received for ${token}`);
+                errors.push(`No data for ${token}`);
+            }
+            
+        } catch (error) {
+            console.error(`❌ Error fetching quote for ${token}:`, error.message);
+            errors.push(`${token}: ${error.message}`);
+            
+            // If it's a rate limit error, wait longer
+            if (error.message.includes('rate') || error.message.includes('limit')) {
+                console.log('⏳ Rate limit hit, waiting 2 seconds...');
+                await new Promise(resolve => setTimeout(resolve, 2000));
+            }
+        }
+    }
+    
+    console.log(`📊 Quote fetch complete: ${Object.keys(quotes).length} successful, ${errors.length} errors`);
+    
+    if (errors.length > 0) {
+        console.log('⚠️ Quote fetch errors:', errors.slice(0, 3)); // Show first 3 errors
+    }
+    
+    return quotes;
+}
+
 // ==================== BACKGROUND DATA FETCHING ====================
 
 async function fetchNiftyData() {
@@ -94,7 +176,8 @@ async function fetchNiftyData() {
         
         console.log('🎯 Fetching NIFTY data in background...');
         
-        // Get NIFTY spot price
+        // Get NIFTY spot price with rate limiting
+        await rateLimiter.waitForSlot();
         const niftyQuote = await kc.getQuote(['NSE:NIFTY 50']);
         const spotPrice = niftyQuote['NSE:NIFTY 50'].last_price;
         console.log('✅ NIFTY Spot Price:', spotPrice);
@@ -136,11 +219,13 @@ async function fetchNiftyData() {
             Math.abs(strike - spotPrice) < Math.abs(closest - spotPrice) ? strike : closest
         );
         
-        // Select strikes around ATM
+        // Select strikes around ATM (reduce number to minimize API calls)
         const atmIndex = availableStrikes.indexOf(actualATM);
-        const startIndex = Math.max(0, atmIndex - 4);
-        const endIndex = Math.min(availableStrikes.length - 1, atmIndex + 4);
+        const startIndex = Math.max(0, atmIndex - 3); // Reduced from 4 to 3
+        const endIndex = Math.min(availableStrikes.length - 1, atmIndex + 3); // Reduced from 4 to 3
         const selectedStrikes = availableStrikes.slice(startIndex, endIndex + 1);
+        
+        console.log(`🎯 Selected ${selectedStrikes.length} strikes around ATM ${actualATM}: [${selectedStrikes.join(', ')}]`);
         
         // Get instruments for selected strikes
         const targetInstruments = expiryAnalysis[bestExpiry].instruments.filter(instrument => 
@@ -148,13 +233,19 @@ async function fetchNiftyData() {
             (instrument.instrument_type === 'CE' || instrument.instrument_type === 'PE')
         );
         
-        // Fetch quotes
+        const estimatedTime = Math.ceil(targetInstruments.length / 2) * 1000; // 2 requests per second
+        console.log(`📊 Will fetch ${targetInstruments.length} instruments (estimated time: ${estimatedTime/1000}s)`);
+        
+        // Fetch quotes with rate limiting (2 requests per second max)
         let quotes = {};
         try {
             const tokens = targetInstruments.map(i => `${i.exchange}:${i.tradingsymbol}`);
-            quotes = await kc.getQuote(tokens);
+            console.log(`📊 Fetching quotes for ${tokens.length} instruments with rate limiting...`);
+            
+            quotes = await fetchQuotesWithRateLimit(kc, tokens);
+            console.log(`✅ Successfully fetched ${Object.keys(quotes).length} quotes`);
         } catch (error) {
-            console.log('❌ Quote fetch failed, using fallback method');
+            console.log('❌ Quote fetch failed, using fallback method:', error.message);
             // Fallback with simulated data
             targetInstruments.forEach(inst => {
                 const basePrice = spotPrice * 0.01;
@@ -174,7 +265,13 @@ async function fetchNiftyData() {
             atm_strike: actualATM,
             expiry: bestExpiry,
             timestamp: new Date().toISOString(),
-            options: {}
+            options: {},
+            fetch_stats: {
+                total_instruments: targetInstruments.length,
+                successful_quotes: Object.keys(quotes).length,
+                failed_quotes: targetInstruments.length - Object.keys(quotes).length,
+                fetch_time: estimatedTime
+            }
         };
         
         // Initialize options structure
