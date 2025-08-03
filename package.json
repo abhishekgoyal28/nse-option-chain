@@ -15,7 +15,7 @@
     "docker:build": "docker build -t nse-tracker .",
     "docker:run": "docker run -d --name nse-tracker -p 3000:3000 --env-file .env -v $(pwd)/data:/app/data nse-tracker",
     "deploy:railway": "./deploy-railway.sh",
-    "docker:stop": "docker stop nse-tracker && docker rm nse-tracker",
+    "docker:stop": "docker stop nse-tracker && docker rm nse-tracker"
   },
   "keywords": [
     "nifty",
