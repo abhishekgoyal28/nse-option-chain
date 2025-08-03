@@ -83,88 +83,6 @@ function initializeKiteConnect() {
 let latestOptionData = null;
 let dataFetchInterval = null;
 
-// ==================== RATE LIMITING FUNCTIONS ====================
-
-// Rate limiter for Kite API calls (max 2 requests per second)
-class RateLimiter {
-    constructor(maxRequests = 2, timeWindow = 1000) {
-        this.maxRequests = maxRequests;
-        this.timeWindow = timeWindow;
-        this.requests = [];
-    }
-
-    async waitForSlot() {
-        const now = Date.now();
-        
-        // Remove requests older than time window
-        this.requests = this.requests.filter(time => now - time < this.timeWindow);
-        
-        // If we're at the limit, wait
-        if (this.requests.length >= this.maxRequests) {
-            const oldestRequest = Math.min(...this.requests);
-            const waitTime = this.timeWindow - (now - oldestRequest) + 10; // +10ms buffer
-            
-            if (waitTime > 0) {
-                console.log(`⏳ Rate limit: waiting ${waitTime}ms before next request`);
-                await new Promise(resolve => setTimeout(resolve, waitTime));
-            }
-        }
-        
-        // Record this request
-        this.requests.push(Date.now());
-    }
-}
-
-const rateLimiter = new RateLimiter(2, 1000); // 2 requests per second
-
-// Function to fetch quotes with rate limiting
-async function fetchQuotesWithRateLimit(kiteConnect, tokens) {
-    const quotes = {};
-    const errors = [];
-    
-    console.log(`🔄 Fetching quotes for ${tokens.length} tokens (max 2 req/sec)...`);
-    
-    for (let i = 0; i < tokens.length; i++) {
-        const token = tokens[i];
-        
-        try {
-            // Wait for rate limit slot
-            await rateLimiter.waitForSlot();
-            
-            console.log(`📊 Fetching quote ${i + 1}/${tokens.length}: ${token}`);
-            
-            // Make individual request for single token
-            const quote = await kiteConnect.getQuote([token]);
-            
-            if (quote && quote[token]) {
-                quotes[token] = quote[token];
-                console.log(`✅ Got quote for ${token}: LTP=${quote[token].last_price}`);
-            } else {
-                console.log(`⚠️ No data received for ${token}`);
-                errors.push(`No data for ${token}`);
-            }
-            
-        } catch (error) {
-            console.error(`❌ Error fetching quote for ${token}:`, error.message);
-            errors.push(`${token}: ${error.message}`);
-            
-            // If it's a rate limit error, wait longer
-            if (error.message.includes('rate') || error.message.includes('limit')) {
-                console.log('⏳ Rate limit hit, waiting 2 seconds...');
-                await new Promise(resolve => setTimeout(resolve, 2000));
-            }
-        }
-    }
-    
-    console.log(`📊 Quote fetch complete: ${Object.keys(quotes).length} successful, ${errors.length} errors`);
-    
-    if (errors.length > 0) {
-        console.log('⚠️ Quote fetch errors:', errors.slice(0, 3)); // Show first 3 errors
-    }
-    
-    return quotes;
-}
-
 // ==================== BACKGROUND DATA FETCHING ====================
 
 async function fetchNiftyData() {
@@ -176,8 +94,7 @@ async function fetchNiftyData() {
         
         console.log('🎯 Fetching NIFTY data in background...');
         
-        // Get NIFTY spot price with rate limiting
-        await rateLimiter.waitForSlot();
+        // Get NIFTY spot price
         const niftyQuote = await kc.getQuote(['NSE:NIFTY 50']);
         const spotPrice = niftyQuote['NSE:NIFTY 50'].last_price;
         console.log('✅ NIFTY Spot Price:', spotPrice);
@@ -219,13 +136,11 @@ async function fetchNiftyData() {
             Math.abs(strike - spotPrice) < Math.abs(closest - spotPrice) ? strike : closest
         );
         
-        // Select strikes around ATM (reduce number to minimize API calls)
+        // Select strikes around ATM
         const atmIndex = availableStrikes.indexOf(actualATM);
-        const startIndex = Math.max(0, atmIndex - 3); // Reduced from 4 to 3
-        const endIndex = Math.min(availableStrikes.length - 1, atmIndex + 3); // Reduced from 4 to 3
+        const startIndex = Math.max(0, atmIndex - 4);
+        const endIndex = Math.min(availableStrikes.length - 1, atmIndex + 4);
         const selectedStrikes = availableStrikes.slice(startIndex, endIndex + 1);
-        
-        console.log(`🎯 Selected ${selectedStrikes.length} strikes around ATM ${actualATM}: [${selectedStrikes.join(', ')}]`);
         
         // Get instruments for selected strikes
         const targetInstruments = expiryAnalysis[bestExpiry].instruments.filter(instrument => 
@@ -233,19 +148,13 @@ async function fetchNiftyData() {
             (instrument.instrument_type === 'CE' || instrument.instrument_type === 'PE')
         );
         
-        const estimatedTime = Math.ceil(targetInstruments.length / 2) * 1000; // 2 requests per second
-        console.log(`📊 Will fetch ${targetInstruments.length} instruments (estimated time: ${estimatedTime/1000}s)`);
-        
-        // Fetch quotes with rate limiting (2 requests per second max)
+        // Fetch quotes
         let quotes = {};
         try {
             const tokens = targetInstruments.map(i => `${i.exchange}:${i.tradingsymbol}`);
-            console.log(`📊 Fetching quotes for ${tokens.length} instruments with rate limiting...`);
-            
-            quotes = await fetchQuotesWithRateLimit(kc, tokens);
-            console.log(`✅ Successfully fetched ${Object.keys(quotes).length} quotes`);
+            quotes = await kc.getQuote(tokens);
         } catch (error) {
-            console.log('❌ Quote fetch failed, using fallback method:', error.message);
+            console.log('❌ Quote fetch failed, using fallback method');
             // Fallback with simulated data
             targetInstruments.forEach(inst => {
                 const basePrice = spotPrice * 0.01;
@@ -265,13 +174,7 @@ async function fetchNiftyData() {
             atm_strike: actualATM,
             expiry: bestExpiry,
             timestamp: new Date().toISOString(),
-            options: {},
-            fetch_stats: {
-                total_instruments: targetInstruments.length,
-                successful_quotes: Object.keys(quotes).length,
-                failed_quotes: targetInstruments.length - Object.keys(quotes).length,
-                fetch_time: estimatedTime
-            }
+            options: {}
         };
         
         // Initialize options structure
@@ -422,7 +325,7 @@ function isMarketOpen() {
         // Market hours: 9:30 AM to 3:30 PM IST
         const marketOpenHour = 9;
         const marketOpenMinute = 30;
-        const marketCloseHour = 21;
+        const marketCloseHour = 23;
         const marketCloseMinute = 30;
         
         // Convert current time to minutes for easier comparison
@@ -505,6 +408,11 @@ function saveHistoricalData(data) {
 
         // Add new row to existing data
         existingData.push(newRow);
+
+        // Keep only last 2000 records to manage file size
+        if (existingData.length > 2001) { // +1 for header
+            existingData = [existingData[0], ...existingData.slice(-2000)];
+        }
 
         // Write back to file
         const buffer = xlsx.build([{
@@ -669,8 +577,111 @@ app.get('/api/health', (req, res) => {
     });
 });
 
-// Authentication endpoints removed - handled via environment variables
-// Set access token endpoint removed - handled via environment variables
+// Get login URL
+app.get('/api/login-url', (req, res) => {
+    console.log('🔍 Login URL endpoint hit');
+    
+    try {
+        if (!kc) {
+            console.log('Initializing KiteConnect...');
+            initializeKiteConnect();
+        }
+        
+        const loginUrl = kc.getLoginURL();
+        console.log('✅ Login URL generated:', loginUrl);
+        
+        res.json({
+            success: true,
+            login_url: loginUrl,
+            api_key: API_KEY
+        });
+    } catch (error) {
+        console.error('❌ Error generating login URL:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to generate login URL',
+            message: error.message
+        });
+    }
+});
+
+// Generate access token
+app.post('/api/generate-token', async (req, res) => {
+    try {
+        const { request_token } = req.body;
+        
+        if (!request_token) {
+            return res.status(400).json({
+                success: false,
+                error: 'Request token is required'
+            });
+        }
+        
+        if (!kc) initializeKiteConnect();
+        
+        console.log('🔐 Generating access token for request_token:', request_token);
+        
+        const response = await kc.generateSession(request_token, API_SECRET);
+        
+        console.log('✅ Access token generated successfully');
+        
+        res.json({
+            success: true,
+            access_token: response.access_token,
+            user_id: response.user_id,
+            user_name: response.user_name,
+            user_shortname: response.user_shortname,
+            email: response.email,
+            user_type: response.user_type,
+            broker: response.broker
+        });
+        
+    } catch (error) {
+        console.error('❌ Error generating access token:', error);
+        res.status(400).json({
+            success: false,
+            error: 'Failed to generate access token',
+            message: error.message
+        });
+    }
+});
+
+// Set access token
+app.post('/api/set-token', async (req, res) => {
+    try {
+        const { access_token } = req.body;
+        
+        if (!access_token) {
+            return res.status(400).json({
+                success: false,
+                error: 'Access token is required'
+            });
+        }
+        
+        if (!kc) initializeKiteConnect();
+        
+        kc.setAccessToken(access_token);
+        
+        const profile = await kc.getProfile();
+        
+        console.log('✅ Access token set successfully for user:', profile.user_name);
+        
+        res.json({
+            success: true,
+            message: 'Access token set successfully',
+            user: profile
+        });
+        
+    } catch (error) {
+        console.error('❌ Error setting access token:', error);
+        res.status(400).json({
+            success: false,
+            error: 'Invalid access token',
+            message: error.message
+        });
+    }
+});
+
 // Enhanced NIFTY data endpoint - now serves from saved data
 app.get('/api/nifty-data', async (req, res) => {
     try {
@@ -883,7 +894,7 @@ app.get('/api/historical-data', (req, res) => {
         if (result.success) {
             res.json(result);
         } else {
-            res.status(500).json(result);
+            res.status(404).json(result);
         }
         
     } catch (error) {
@@ -934,6 +945,30 @@ app.get('/api/historical-summary', (req, res) => {
     }
 });
 
+// Clear historical data
+app.delete('/api/historical-data', (req, res) => {
+    try {
+        if (fs.existsSync(HISTORY_FILE)) {
+            fs.unlinkSync(HISTORY_FILE);
+            console.log('🗑️ Historical data file deleted');
+        }
+        
+        // Recreate empty file
+        initializeHistoryFile();
+        
+        res.json({
+            success: true,
+            message: 'Historical data cleared successfully'
+        });
+        
+    } catch (error) {
+        console.error('❌ Error clearing historical data:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
 
 // Export historical data as Excel download
 app.get('/api/export-historical-data', (req, res) => {
