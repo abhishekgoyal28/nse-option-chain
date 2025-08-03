@@ -317,7 +317,7 @@ function isMarketOpen() {
         const currentDay = istTime.getDay(); // 0 = Sunday, 6 = Saturday
         
         // Check if it's a weekend (Saturday = 6, Sunday = 0)
-        if (currentDay === 1 || currentDay === 6) {
+        if (currentDay === 0 || currentDay === 6) {
             console.log('🏪 Market closed: Weekend');
             return false;
         }
@@ -325,7 +325,7 @@ function isMarketOpen() {
         // Market hours: 9:30 AM to 3:30 PM IST
         const marketOpenHour = 9;
         const marketOpenMinute = 30;
-        const marketCloseHour = 23;
+        const marketCloseHour = 15;
         const marketCloseMinute = 30;
         
         // Convert current time to minutes for easier comparison
