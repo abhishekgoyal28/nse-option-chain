@@ -422,7 +422,7 @@ function isMarketOpen() {
         // Market hours: 9:30 AM to 3:30 PM IST
         const marketOpenHour = 9;
         const marketOpenMinute = 30;
-        const marketCloseHour = 15;
+        const marketCloseHour = 21;
         const marketCloseMinute = 30;
         
         // Convert current time to minutes for easier comparison
@@ -505,11 +505,6 @@ function saveHistoricalData(data) {
 
         // Add new row to existing data
         existingData.push(newRow);
-
-        // Keep only last 2000 records to manage file size
-        if (existingData.length > 2001) { // +1 for header
-            existingData = [existingData[0], ...existingData.slice(-2000)];
-        }
 
         // Write back to file
         const buffer = xlsx.build([{
@@ -674,111 +669,8 @@ app.get('/api/health', (req, res) => {
     });
 });
 
-// Get login URL
-app.get('/api/login-url', (req, res) => {
-    console.log('🔍 Login URL endpoint hit');
-    
-    try {
-        if (!kc) {
-            console.log('Initializing KiteConnect...');
-            initializeKiteConnect();
-        }
-        
-        const loginUrl = kc.getLoginURL();
-        console.log('✅ Login URL generated:', loginUrl);
-        
-        res.json({
-            success: true,
-            login_url: loginUrl,
-            api_key: API_KEY
-        });
-    } catch (error) {
-        console.error('❌ Error generating login URL:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Failed to generate login URL',
-            message: error.message
-        });
-    }
-});
-
-// Generate access token
-app.post('/api/generate-token', async (req, res) => {
-    try {
-        const { request_token } = req.body;
-        
-        if (!request_token) {
-            return res.status(400).json({
-                success: false,
-                error: 'Request token is required'
-            });
-        }
-        
-        if (!kc) initializeKiteConnect();
-        
-        console.log('🔐 Generating access token for request_token:', request_token);
-        
-        const response = await kc.generateSession(request_token, API_SECRET);
-        
-        console.log('✅ Access token generated successfully');
-        
-        res.json({
-            success: true,
-            access_token: response.access_token,
-            user_id: response.user_id,
-            user_name: response.user_name,
-            user_shortname: response.user_shortname,
-            email: response.email,
-            user_type: response.user_type,
-            broker: response.broker
-        });
-        
-    } catch (error) {
-        console.error('❌ Error generating access token:', error);
-        res.status(400).json({
-            success: false,
-            error: 'Failed to generate access token',
-            message: error.message
-        });
-    }
-});
-
-// Set access token
-app.post('/api/set-token', async (req, res) => {
-    try {
-        const { access_token } = req.body;
-        
-        if (!access_token) {
-            return res.status(400).json({
-                success: false,
-                error: 'Access token is required'
-            });
-        }
-        
-        if (!kc) initializeKiteConnect();
-        
-        kc.setAccessToken(access_token);
-        
-        const profile = await kc.getProfile();
-        
-        console.log('✅ Access token set successfully for user:', profile.user_name);
-        
-        res.json({
-            success: true,
-            message: 'Access token set successfully',
-            user: profile
-        });
-        
-    } catch (error) {
-        console.error('❌ Error setting access token:', error);
-        res.status(400).json({
-            success: false,
-            error: 'Invalid access token',
-            message: error.message
-        });
-    }
-});
-
+// Authentication endpoints removed - handled via environment variables
+// Set access token endpoint removed - handled via environment variables
 // Enhanced NIFTY data endpoint - now serves from saved data
 app.get('/api/nifty-data', async (req, res) => {
     try {
@@ -991,7 +883,7 @@ app.get('/api/historical-data', (req, res) => {
         if (result.success) {
             res.json(result);
         } else {
-            res.status(404).json(result);
+            res.status(500).json(result);
         }
         
     } catch (error) {
@@ -1042,30 +934,6 @@ app.get('/api/historical-summary', (req, res) => {
     }
 });
 
-// Clear historical data
-app.delete('/api/historical-data', (req, res) => {
-    try {
-        if (fs.existsSync(HISTORY_FILE)) {
-            fs.unlinkSync(HISTORY_FILE);
-            console.log('🗑️ Historical data file deleted');
-        }
-        
-        // Recreate empty file
-        initializeHistoryFile();
-        
-        res.json({
-            success: true,
-            message: 'Historical data cleared successfully'
-        });
-        
-    } catch (error) {
-        console.error('❌ Error clearing historical data:', error);
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
-    }
-});
 
 // Export historical data as Excel download
 app.get('/api/export-historical-data', (req, res) => {
