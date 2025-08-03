@@ -1,0 +1,73 @@
+# Google Cloud Run service configuration
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: nse-tracker
+  annotations:
+    run.googleapis.com/ingress: all
+    run.googleapis.com/execution-environment: gen2
+spec:
+  template:
+    metadata:
+      annotations:
+        # CPU allocation (1 = 1 vCPU)
+        run.googleapis.com/cpu: "1"
+        # Memory allocation
+        run.googleapis.com/memory: "512Mi"
+        # Maximum concurrent requests per instance
+        run.googleapis.com/execution-environment: gen2
+        autoscaling.knative.dev/maxScale: "10"
+        autoscaling.knative.dev/minScale: "1"
+        # Request timeout (max 3600 seconds for gen2)
+        run.googleapis.com/timeout: "300"
+    spec:
+      containerConcurrency: 80
+      timeoutSeconds: 300
+      containers:
+      - image: gcr.io/PROJECT_ID/nse-tracker:latest
+        ports:
+        - containerPort: 3000
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: PORT
+          value: "3000"
+        - name: KITE_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: kite-credentials
+              key: api_key
+        - name: KITE_API_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: kite-credentials
+              key: api_secret
+        resources:
+          limits:
+            cpu: "1"
+            memory: "512Mi"
+        # Health check
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /api/health
+            port: 3000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 5
+        # Volume mounts for persistent data
+        volumeMounts:
+        - name: data-volume
+          mountPath: /app/data
+      volumes:
+      - name: data-volume
+        emptyDir: {}
+  traffic:
+  - percent: 100
+    latestRevision: true
