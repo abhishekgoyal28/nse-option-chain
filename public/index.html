@@ -100,6 +100,16 @@
         .tracking-active { background: #dcfce7; color: #166534; }
         .tracking-inactive { background: #fee2e2; color: #991b1b; }
         
+        #nextUpdate {
+            color: #3b82f6;
+            font-weight: 600;
+            font-family: 'Courier New', monospace;
+        }
+        #nextUpdate.urgent {
+            color: #f59e0b;
+            animation: pulse 1s infinite;
+        }
+        
         .indicators-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; margin-bottom: 24px; }
         .indicator { padding: 16px; border-radius: 8px; border: 2px solid; transition: all 0.3s; background: white; }
         .indicator-bullish { border-color: #10b981; background: linear-gradient(135deg, #ecfdf5, #f0fdf4); }
@@ -208,6 +218,7 @@
             </div>
             <div style="display: flex; gap: 16px; align-items: center;">
                 <span id="lastUpdate">Last Update: --:--:--</span>
+                <span id="nextUpdate" class="hidden">Next Update: --s</span>
                 <span id="userInfo">User: Not logged in</span>
             </div>
         </div>
@@ -518,6 +529,9 @@
         let isAuthenticated = false;
         let isTracking = false;
         let trackingInterval = null;
+        let countdownInterval = null;
+        let nextUpdateTime = null;
+        const UPDATE_INTERVAL = 30000; // 30 seconds
         let accessToken = null;
         let currentData = null;
         let historicalData = null;
@@ -542,6 +556,45 @@
 
         function formatTime(date = new Date()) {
             return date.toLocaleTimeString();
+        }
+
+        // Countdown Timer Functions
+        function startCountdown() {
+            if (!isTracking) return;
+            
+            nextUpdateTime = Date.now() + UPDATE_INTERVAL;
+            const nextUpdateEl = document.getElementById('nextUpdate');
+            nextUpdateEl.classList.remove('hidden');
+            
+            countdownInterval = setInterval(() => {
+                const remaining = Math.max(0, Math.ceil((nextUpdateTime - Date.now()) / 1000));
+                
+                if (remaining <= 0) {
+                    nextUpdateEl.textContent = 'Updating...';
+                    nextUpdateEl.classList.add('urgent');
+                } else {
+                    nextUpdateEl.textContent = `Next Update: ${remaining}s`;
+                    nextUpdateEl.classList.toggle('urgent', remaining <= 5);
+                }
+            }, 1000);
+        }
+
+        function stopCountdown() {
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
+                countdownInterval = null;
+            }
+            
+            const nextUpdateEl = document.getElementById('nextUpdate');
+            nextUpdateEl.classList.add('hidden');
+            nextUpdateEl.classList.remove('urgent');
+        }
+
+        function resetCountdown() {
+            if (isTracking) {
+                stopCountdown();
+                startCountdown();
+            }
         }
 
         function formatDate(dateStr) {
@@ -1469,6 +1522,13 @@
 
             addLog('📊 Fetching NIFTY option chain data...', 'info');
             
+            // Show loading state
+            const nextUpdateEl = document.getElementById('nextUpdate');
+            if (isTracking) {
+                nextUpdateEl.textContent = 'Updating...';
+                nextUpdateEl.classList.add('urgent');
+            }
+            
             return apiCall('nifty-data')
                 .then(response => {
                     if (response.success) {
@@ -1477,6 +1537,9 @@
                         
                         document.getElementById('lastUpdate').textContent = `Last Update: ${formatTime()}`;
                         addLog('✅ Data updated successfully', 'success');
+                        
+                        // Reset countdown timer after successful update
+                        resetCountdown();
                         
                         // Handle market status and historical data saving
                         if (response.market_status) {
@@ -1796,9 +1859,12 @@
                 fetchData().catch(error => {
                     addLog(`❌ Tracking error: ${error.message}`, 'error');
                 });
-            }, 45000);
+            }, UPDATE_INTERVAL);
             
-            addLog('⏰ Tracking started - Updates every 45 seconds', 'info');
+            // Start countdown timer
+            startCountdown();
+            
+            addLog('⏰ Tracking started - Updates every 30 seconds', 'info');
         }
 
         function stopTracking() {
@@ -1815,6 +1881,9 @@
                 clearInterval(trackingInterval);
                 trackingInterval = null;
             }
+            
+            // Stop countdown timer
+            stopCountdown();
             
             addLog('✅ Tracking stopped', 'success');
         }
@@ -2107,6 +2176,9 @@ Check browser console for detailed objects.
         function handlePageUnload() {
             if (trackingInterval) {
                 clearInterval(trackingInterval);
+            }
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
             }
         }
 
