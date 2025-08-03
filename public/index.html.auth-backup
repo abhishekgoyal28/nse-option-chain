@@ -485,10 +485,10 @@
     <script>
         // Global Variables
         const API_BASE_URL = window.location.origin;
-        let isAuthenticated = true; // Authentication handled server-side
+        let isAuthenticated = false;
         let isTracking = false;
         let trackingInterval = null;
-        let accessToken = null; // Not needed on client side
+        let accessToken = null;
         let currentData = null;
         let historicalData = null;
         let chartsReady = false;
@@ -565,8 +565,11 @@
                 button.disabled = true;
             } else {
                 button.classList.remove('loading');
-                // All buttons enabled since authentication is handled server-side
-                button.disabled = false;
+                if (buttonId === 'trackingBtn' || buttonId === 'refreshBtn') {
+                    button.disabled = !isAuthenticated;
+                } else {
+                    button.disabled = false;
+                }
             }
         }
 
@@ -1160,7 +1163,8 @@
                 
                 fetch(`${API_BASE_URL}/api/${endpoint}`, {
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        ...(accessToken && { 'Authorization': `Bearer ${accessToken}` })
                     },
                     ...options
                 })
@@ -1326,7 +1330,10 @@
 
         // Data Fetching Functions
         function fetchData() {
-            // Authentication handled server-side, proceed directly
+            if (!isAuthenticated) {
+                addLog('❌ Please authenticate first', 'error');
+                return Promise.reject(new Error('Not authenticated'));
+            }
 
             addLog('📊 Fetching NIFTY option chain data...', 'info');
             
@@ -1628,7 +1635,11 @@
         function toggleTracking() {
             addLog('🔍 Toggle tracking button clicked', 'info');
             
-            // Authentication handled server-side, proceed directly
+            if (!isAuthenticated) {
+                addLog('❌ Please authenticate first', 'error');
+                alert('Please authenticate with Kite Connect first');
+                return;
+            }
             
             if (isTracking) {
                 stopTracking();
@@ -1679,7 +1690,11 @@
         function refreshData() {
             addLog('🔄 Manual data refresh triggered', 'info');
             
-            // Authentication handled server-side, proceed directly
+            if (!isAuthenticated) {
+                addLog('❌ Please authenticate first', 'error');
+                alert('Please authenticate with Kite Connect first');
+                return;
+            }
 
             setButtonLoading('refreshBtn', true);
             
@@ -1774,7 +1789,7 @@
             console.log('Chart.js Object:', typeof Chart !== 'undefined' ? Chart : 'undefined');
             console.log('Historical Data:', historicalData);
             console.log('Current Data:', currentData);
-            console.log('Authentication: Server-side (always ready)');
+            console.log('Is Authenticated:', isAuthenticated);
             console.log('Is Tracking:', isTracking);
             console.log('Individual Charts:', {
                 spotChart: !!spotChart,
@@ -1828,7 +1843,7 @@ Data Points: ${historicalData?.spotPrices?.length || 0}
 Timestamps Available: ${!!historicalData?.timestamps ? 'YES' : 'NO'}
 
 Connection Status:
-- Authenticated: Server-side (always ready)
+- Authenticated: ${isAuthenticated}
 - Tracking: ${isTracking}
 
 Chart X-Axis: Now shows actual time stamps (HH:MM IST)
@@ -1850,7 +1865,15 @@ Check browser console for detailed objects.
             addLog('🚀 Setting up event listeners', 'success');
             
             // Authentication buttons
-            // Authentication event listeners removed - handled server-side
+            document.getElementById('loginUrlBtn')?.addEventListener('click', (e) => {
+                e.preventDefault();
+                getLoginUrl();
+            });
+            
+            document.getElementById('generateTokenBtn')?.addEventListener('click', (e) => {
+                e.preventDefault();
+                generateAccessToken();
+            });
             
             // Main action buttons
             document.getElementById('trackingBtn')?.addEventListener('click', (e) => {
@@ -1921,7 +1944,7 @@ Check browser console for detailed objects.
             console.log('🚀 Initializing NIFTY Option Chain Tracker with Chart.js...');
             addLog('🚀 System initialized. Loading Chart.js...', 'success');
             
-            updateConnectionStatus('connected', 'Server-side Auth Ready');
+            updateConnectionStatus('disconnected', 'Not Connected');
             updateTrackingStatus(false);
             
             // Set initial market status
@@ -1942,7 +1965,7 @@ Check browser console for detailed objects.
             // Initialize charts (async)
             await initializeCharts();
             
-            addLog('✅ System ready! Authentication handled server-side.', 'success');
+            addLog('📋 Please configure Kite Connect API credentials above', 'info');
             addLog('🕘 Market Hours: 9:30 AM - 3:30 PM IST (Monday to Friday)', 'info');
             addLog('📊 Market Indicators section added for technical analysis', 'info');
             addLog('✅ All buttons and functions are working', 'success');
