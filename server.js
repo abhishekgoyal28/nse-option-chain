@@ -1,4 +1,4 @@
-// server.js - Enhanced version with historical data storage in Excel
+// server.js - Enhanced version with historical data storage in Google Sheets and Excel fallback
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -8,6 +8,7 @@ const KiteConnect = require('kiteconnect').KiteConnect;
 const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
 const compression = require('compression');
+const GoogleSheetsStorage = require('./reliableGoogleSheets');
 require('dotenv').config();
 
 const app = express();
@@ -16,6 +17,9 @@ const PORT = process.env.PORT || 3000;
 // Historical data storage paths
 const DATA_DIR = path.join(__dirname, 'data');
 const HISTORY_FILE = path.join(DATA_DIR, 'nifty_history.xlsx');
+
+// Initialize Google Sheets storage
+const googleSheetsStorage = new GoogleSheetsStorage();
 
 // Ensure data directory exists
 if (!fs.existsSync(DATA_DIR)) {
@@ -109,6 +113,7 @@ async function fetchNiftyData() {
             instrument.name === 'NIFTY'
         );
         
+        // console.log(`📊 Found ${niftyInstruments.length} NIFTY instruments : ${JSON.stringify(niftyInstruments)}`);
         // Find best expiry
         const expiryAnalysis = {};
         niftyInstruments.forEach(inst => {
@@ -127,8 +132,16 @@ async function fetchNiftyData() {
             if (inst.instrument_type === 'PE') expiryAnalysis[expiry].pe_count++;
         });
         
-        const sortedExpiries = Object.keys(expiryAnalysis).sort();
+        // Fix: Sort expiries by actual date, not string
+        const sortedExpiries = Object.keys(expiryAnalysis).sort((a, b) => {
+            const dateA = new Date(a);
+            const dateB = new Date(b);
+            return dateA - dateB; // Sort by actual date
+        });
+        
         const bestExpiry = sortedExpiries[0]; // Use nearest expiry
+        console.log('📅 Available expiries:', sortedExpiries.slice(0, 3)); // Log first 3 expiries
+        console.log('🎯 Selected expiry:', bestExpiry);
         
         // Get instruments for ATM and surrounding strikes
         const availableStrikes = Array.from(expiryAnalysis[bestExpiry].strikes).sort((a, b) => a - b);
@@ -229,7 +242,7 @@ function startPeriodicDataFetch() {
         const data = await fetchNiftyData();
         if (data) {
             latestOptionData = data;
-            const saved = saveHistoricalData(data);
+            const saved = await saveHistoricalData(data);
             console.log('💾 Initial data fetch and save completed:', saved);
         }
     }, 5000); // Wait 5 seconds after server start
@@ -247,7 +260,7 @@ function startPeriodicDataFetch() {
             const data = await fetchNiftyData();
             if (data) {
                 latestOptionData = data;
-                const saved = saveHistoricalData(data);
+                const saved = await saveHistoricalData(data);
                 console.log(`🔄 Periodic data update: ${new Date().toLocaleTimeString()} - Saved: ${saved}`);
             }
         } catch (error) {
@@ -323,8 +336,8 @@ function isMarketOpen() {
         }
         
         // Market hours: 9:30 AM to 3:30 PM IST
-        const marketOpenHour = 9;
-        const marketOpenMinute = 30;
+        const marketOpenHour = 0;
+        const marketOpenMinute = 0;
         const marketCloseHour = 15;
         const marketCloseMinute = 30;
         
@@ -349,7 +362,7 @@ function isMarketOpen() {
     }
 }
 
-function saveHistoricalData(data) {
+async function saveHistoricalData(data) {
     try {
         // Check if market is open before saving data
         if (!isMarketOpen()) {
@@ -358,12 +371,45 @@ function saveHistoricalData(data) {
         }
 
         const timestamp = new Date();
+        let savedToGoogleSheets = false;
+        let savedToExcel = false;
+
+        // Try to save to Google Sheets first
+        try {
+            await googleSheetsStorage.saveNiftyData(data);
+            savedToGoogleSheets = true;
+            console.log('✅ Data saved to Google Sheets successfully');
+        } catch (googleError) {
+            console.warn('⚠️  Failed to save to Google Sheets, falling back to Excel:', googleError.message);
+        }
+
+        // Save to Excel as fallback or if Google Sheets failed
+        try {
+            savedToExcel = saveToExcel(data, timestamp);
+            if (savedToExcel) {
+                console.log('✅ Data saved to Excel successfully');
+            }
+        } catch (excelError) {
+            console.error('❌ Failed to save to Excel:', excelError.message);
+        }
+
+        // Return true if at least one storage method succeeded
+        return savedToGoogleSheets || savedToExcel;
+
+    } catch (error) {
+        console.error('❌ Error in saveHistoricalData:', error.message);
+        return false;
+    }
+}
+
+function saveToExcel(data, timestamp) {
+    try {
         const istTimestamp = new Date(timestamp.toLocaleString("en-US", {timeZone: "Asia/Kolkata"}));
         const atmCall = data.options[data.atm_strike]?.CE;
         const atmPut = data.options[data.atm_strike]?.PE;
 
         if (!atmCall || !atmPut) {
-            console.log('⚠️ Incomplete option data, skipping historical save');
+            console.log('⚠️ Incomplete option data, skipping Excel save');
             return false;
         }
 
@@ -421,11 +467,11 @@ function saveHistoricalData(data) {
         }]);
 
         fs.writeFileSync(HISTORY_FILE, buffer);
-        console.log(`💾 Historical data saved during market hours: ${existingData.length - 1} total records (IST: ${istTimestamp.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' })})`);
+        console.log(`💾 Historical data saved to Excel: ${existingData.length - 1} total records (IST: ${istTimestamp.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' })})`);
         return true;
 
     } catch (error) {
-        console.error('❌ Error saving historical data:', error.message);
+        console.error('❌ Error saving to Excel:', error.message);
         return false;
     }
 }
@@ -559,8 +605,17 @@ function getHistoricalDataStats() {
 // ==================== API ROUTES ====================
 
 // Health check
-app.get('/api/health', (req, res) => {
+app.get('/api/health', async (req, res) => {
     const stats = getHistoricalDataStats();
+    
+    // Get Google Sheets status
+    let googleSheetsStatus = { available: false, error: 'Not configured' };
+    try {
+        googleSheetsStatus = await googleSheetsStorage.getSheetInfo();
+    } catch (error) {
+        googleSheetsStatus = { available: false, error: error.message };
+    }
+    
     res.json({
         status: 'healthy',
         timestamp: new Date().toISOString(),
@@ -568,6 +623,12 @@ app.get('/api/health', (req, res) => {
         kite_initialized: !!kc,
         api_key: API_KEY ? `${API_KEY.substring(0, 6)}...` : 'not set',
         historical_data: stats,
+        google_sheets: googleSheetsStatus,
+        storage: {
+            primary: googleSheetsStatus.available ? 'Google Sheets' : 'Excel',
+            fallback: 'Excel',
+            excel_file_exists: fs.existsSync(HISTORY_FILE)
+        },
         periodic_fetch: {
             status: dataFetchInterval ? 'running' : 'stopped',
             interval: dataFetchInterval ? '30 seconds' : 'none',
@@ -795,7 +856,7 @@ app.post('/api/fetch-data', async (req, res) => {
         const data = await fetchNiftyData();
         if (data) {
             latestOptionData = data;
-            const saved = saveHistoricalData(data);
+            const saved = await saveHistoricalData(data);
             
             res.json({
                 success: true,
@@ -1185,6 +1246,69 @@ app.get('/api/ws-info', (req, res) => {
             }
         }
     });
+});
+
+// Google Sheets API endpoints
+app.get('/api/sheets-status', async (req, res) => {
+    try {
+        const sheetInfo = await googleSheetsStorage.getSheetInfo();
+        res.json({
+            success: true,
+            googleSheets: sheetInfo,
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: 'Failed to get Google Sheets status',
+            message: error.message
+        });
+    }
+});
+
+app.get('/api/sheets-historical-data', async (req, res) => {
+    try {
+        const filters = {
+            date: req.query.date,
+            strikePrice: req.query.strikePrice ? parseInt(req.query.strikePrice) : null,
+            limit: req.query.limit ? parseInt(req.query.limit) : null
+        };
+        
+        const historicalData = await googleSheetsStorage.getHistoricalData(filters);
+        res.json({
+            success: true,
+            data: historicalData,
+            count: historicalData.length,
+            filters: filters,
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: 'Failed to fetch historical data from Google Sheets',
+            message: error.message
+        });
+    }
+});
+
+app.get('/api/sheets-daily-summary', async (req, res) => {
+    try {
+        const date = req.query.date || null;
+        const summaryData = await googleSheetsStorage.getDailySummary(date);
+        
+        res.json({
+            success: true,
+            data: summaryData,
+            date: date,
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: 'Failed to fetch daily summary from Google Sheets',
+            message: error.message
+        });
+    }
 });
 
 // Start server

@@ -1,0 +1,23 @@
+# AWS App Runner Configuration
+# Use this with AWS App Runner service
+
+version: 1.0
+runtime: nodejs18
+build:
+  commands:
+    build:
+      - echo "Installing dependencies..."
+      - npm ci --only=production
+      - echo "Creating data directory..."
+      - mkdir -p data
+run:
+  runtime-version: 18
+  command: node server.js
+  network:
+    port: 3000
+    env: PORT
+  env:
+    - name: NODE_ENV
+      value: production
+    - name: PORT
+      value: 3000

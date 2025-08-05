@@ -1,0 +1,142 @@
+# Google Kubernetes Engine (GKE) deployment configuration
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nse-tracker
+  labels:
+    app: nse-tracker
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: nse-tracker
+  template:
+    metadata:
+      labels:
+        app: nse-tracker
+    spec:
+      containers:
+      - name: nse-tracker
+        image: gcr.io/PROJECT_ID/nse-tracker:latest
+        ports:
+        - containerPort: 3000
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: PORT
+          value: "3000"
+        - name: KITE_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: kite-credentials
+              key: api_key
+        - name: KITE_API_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: kite-credentials
+              key: api_secret
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /api/health
+            port: 3000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        volumeMounts:
+        - name: data-storage
+          mountPath: /app/data
+      volumes:
+      - name: data-storage
+        persistentVolumeClaim:
+          claimName: nse-tracker-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nse-tracker-service
+spec:
+  selector:
+    app: nse-tracker
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 3000
+  type: LoadBalancer
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nse-tracker-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nse-tracker-ingress
+  annotations:
+    kubernetes.io/ingress.global-static-ip-name: nse-tracker-ip
+    networking.gke.io/managed-certificates: nse-tracker-ssl-cert
+    kubernetes.io/ingress.class: "gce"
+spec:
+  rules:
+  - host: your-domain.com
+    http:
+      paths:
+      - path: /*
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: nse-tracker-service
+            port:
+              number: 80
+---
+apiVersion: networking.gke.io/v1
+kind: ManagedCertificate
+metadata:
+  name: nse-tracker-ssl-cert
+spec:
+  domains:
+    - your-domain.com
+    - www.your-domain.com
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: nse-tracker-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: nse-tracker
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
