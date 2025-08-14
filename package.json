@@ -5,7 +5,7 @@
   "main": "dist/server.js",
   "scripts": {
     "build": "tsc && tsc-alias",
-    "start": "node -r tsconfig-paths/register dist/server.js",
+    "start": "node dist/server.js",
     "dev": "ts-node-dev --respawn --transpile-only -r tsconfig-paths/register src/server.ts",
     "dev:watch": "nodemon --exec ts-node -r tsconfig-paths/register src/server.ts",
     "test": "jest",
@@ -14,7 +14,7 @@
     "lint:fix": "eslint src/**/*.ts --fix",
     "clean": "rimraf dist",
     "prebuild": "npm run clean",
-    "postbuild": "cp -r public dist/ && cp .env.example dist/",
+    "postbuild": "cp -r public dist/",
     "type-check": "tsc --noEmit"
   },
   "keywords": [
