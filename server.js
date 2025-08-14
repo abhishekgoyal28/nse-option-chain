@@ -66,7 +66,7 @@ app.use(express.urlencoded({ extended: true }));
 // Rate limiting
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 100,
+    max: 1000,
     message: 'Too many requests from this IP, please try again later.'
 });
 app.use('/api/', limiter);
@@ -308,7 +308,7 @@ function initializeHistoryFile() {
         ];
         
         const buffer = xlsx.build([{
-            name: 'NIFTY_Historical_Data',
+            name: 'NIFTY_Historical_Data_v1',
             data: headers
         }]);
         
@@ -462,7 +462,7 @@ function saveToExcel(data, timestamp) {
 
         // Write back to file
         const buffer = xlsx.build([{
-            name: 'NIFTY_Historical_Data',
+            name: 'NIFTY_Historical_Data_v1',
             data: existingData
         }]);
 
@@ -1041,7 +1041,7 @@ app.get('/api/export-historical-data', (req, res) => {
             });
         }
         
-        const filename = `nifty_historical_data_${new Date().toISOString().split('T')[0]}.xlsx`;
+        const filename = `NIFTY_Historical_Data_v1_${new Date().toISOString().split('T')[0]}.xlsx`;
         
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);

@@ -43,12 +43,16 @@ A real-time NIFTY option chain tracker with historical data storage and periodic
 
 ## 💾 Data Storage
 
-The app uses a **dual storage approach**:
+The app uses a **dual storage approach** for maximum reliability:
 
-1. **Primary**: Google Sheets (persistent across deployments)
-2. **Fallback**: Excel files (local storage)
+1. **Primary**: Google Sheets (persistent across deployments, cloud-based)
+2. **Fallback**: Excel files (local storage, automatic backup)
 
-If Google Sheets is configured, data is saved there first. If it fails or isn't configured, the app falls back to Excel storage.
+**How it works:**
+- Data is **always saved to Google Sheets first** (if configured)
+- **Excel files serve as automatic backup** in case Google Sheets fails
+- If Google Sheets is not configured, Excel becomes the primary storage
+- **No data loss** - at least one storage method will always work
 
 ## 🚀 Deployment
 
