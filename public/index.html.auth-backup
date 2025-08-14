@@ -1315,7 +1315,7 @@
             
             const link = document.createElement('a');
             link.href = `${API_BASE_URL}/api/export-historical-data`;
-            link.download = `nifty_historical_data_${new Date().toISOString().split('T')[0]}.xlsx`;
+            link.download = `nifty_historical_data_v1_${new Date().toISOString().split('T')[0]}.xlsx`;
             link.click();
             
             addLog('✅ Export download started', 'success');

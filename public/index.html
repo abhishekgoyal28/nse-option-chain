@@ -144,9 +144,25 @@
         .condition-details { font-size: 12px; color: #6b7280; margin-bottom: 8px; }
         .condition-value { font-family: 'Courier New', monospace; font-size: 13px; font-weight: 600; }
         
-        .signal-alert { background: linear-gradient(135deg, #fef3c7, #fed7aa); border: 2px solid #f59e0b; border-radius: 12px; padding: 24px; margin-bottom: 24px; }
-        .signal-alert h2 { color: #92400e; margin: 0 0 12px 0; font-size: 20px; }
-        .signal-alert p { color: #92400e; margin: 8px 0; font-weight: 500; }
+        .signal-alert { border-radius: 12px; padding: 24px; margin-bottom: 24px; }
+        .signal-alert h2 { margin: 0 0 12px 0; font-size: 20px; }
+        .signal-alert p { margin: 8px 0; font-weight: 500; }
+        
+        /* Bullish Signal Styling */
+        #bullishSignalAlert { 
+            background: linear-gradient(135deg, #dcfce7, #bbf7d0); 
+            border: 2px solid #10b981; 
+        }
+        #bullishSignalAlert h2 { color: #065f46; }
+        #bullishSignalAlert p { color: #065f46; }
+        
+        /* Bearish Signal Styling */
+        #bearishSignalAlert { 
+            background: linear-gradient(135deg, #fee2e2, #fecaca); 
+            border: 2px solid #ef4444; 
+        }
+        #bearishSignalAlert h2 { color: #991b1b; }
+        #bearishSignalAlert p { color: #991b1b; }
 
         .historical-summary {
             background: #f0f9ff;
@@ -373,6 +389,29 @@
                     </div>
                 </div>
 
+                <!-- Multi-Strike Option Chain -->
+                <div class="card" style="grid-column: span 2;">
+                    <h3>📊 Multi-Strike Option Chain (ATM ±3)</h3>
+                    <div class="multi-strike-container" style="overflow-x: auto;">
+                        <table class="multi-strike-table" style="width: 100%; min-width: 800px; border-collapse: collapse; font-size: 12px;">
+                            <thead>
+                                <tr style="background: #f3f4f6;">
+                                    <th style="padding: 8px; border: 1px solid #e5e7eb;">Strike</th>
+                                    <th style="padding: 8px; border: 1px solid #e5e7eb; color: #059669;">Call OI</th>
+                                    <th style="padding: 8px; border: 1px solid #e5e7eb; color: #059669;">Call Vol</th>
+                                    <th style="padding: 8px; border: 1px solid #e5e7eb; color: #059669;">Call LTP</th>
+                                    <th style="padding: 8px; border: 1px solid #e5e7eb; color: #dc2626;">Put LTP</th>
+                                    <th style="padding: 8px; border: 1px solid #e5e7eb; color: #dc2626;">Put Vol</th>
+                                    <th style="padding: 8px; border: 1px solid #e5e7eb; color: #dc2626;">Put OI</th>
+                                </tr>
+                            </thead>
+                            <tbody id="multiStrikeTableBody">
+                                <!-- Will be populated by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
                 <div class="card">
                     <h3>🎯 Chart Status</h3>
                     <div class="metric">
@@ -458,6 +497,50 @@
             </div>
         </div>
 
+        <!-- Multi-Strike Charts Section -->
+        <h2 style="margin: 24px 0 16px 0; color: #1f2937;">📊 Multi-Strike Analysis (ATM ±3)</h2>
+        <div class="grid-charts">
+            <!-- Multi-Strike Call LTP Chart -->
+            <div class="card">
+                <div class="chart-header">
+                    <h3>📈 Multi-Strike Call LTP</h3>
+                </div>
+                <div class="chart-container">
+                    <canvas id="multiStrikeCallChart" width="500" height="300"></canvas>
+                </div>
+            </div>
+
+            <!-- Multi-Strike Put LTP Chart -->
+            <div class="card">
+                <div class="chart-header">
+                    <h3>📉 Multi-Strike Put LTP</h3>
+                </div>
+                <div class="chart-container">
+                    <canvas id="multiStrikePutChart" width="500" height="300"></canvas>
+                </div>
+            </div>
+
+            <!-- Multi-Strike Call Volume Chart -->
+            <div class="card">
+                <div class="chart-header">
+                    <h3>📊 Multi-Strike Call Volume</h3>
+                </div>
+                <div class="chart-container">
+                    <canvas id="multiStrikeCallVolumeChart" width="500" height="300"></canvas>
+                </div>
+            </div>
+
+            <!-- Multi-Strike Put Volume Chart -->
+            <div class="card">
+                <div class="chart-header">
+                    <h3>📊 Multi-Strike Put Volume</h3>
+                </div>
+                <div class="chart-container">
+                    <canvas id="multiStrikePutVolumeChart" width="500" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+
         <!-- Market Indicators -->
         <h2 style="margin: 0 0 16px 0; color: #1f2937;">📊 Market Indicators</h2>
         <div class="indicators-grid" id="indicatorsGrid">
@@ -470,12 +553,20 @@
             <!-- Conditions will be populated by JavaScript -->
         </div>
 
-        <!-- Signal Alert -->
-        <div class="signal-alert hidden" id="signalAlert">
+        <!-- Bullish Signal Alert -->
+        <div class="signal-alert hidden" id="bullishSignalAlert" style="border-left: 4px solid #10b981;">
+            <h2>🚀 BULLISH BIAS SIGNAL DETECTED</h2>
+            <p><strong>Bullish Bias – Upward move expected</strong></p>
+            <p>All conditions satisfied at <span id="bullishSignalTimestamp">--:--:--</span></p>
+            <p>Confidence Level: <span id="bullishSignalConfidence">HIGH</span> | Spot Price: <span id="bullishSignalSpot">--</span></p>
+        </div>
+
+        <!-- Bearish Signal Alert -->
+        <div class="signal-alert hidden" id="bearishSignalAlert" style="border-left: 4px solid #ef4444;">
             <h2>🚨 BEARISH BIAS SIGNAL DETECTED</h2>
             <p><strong>Bearish Bias – Downward move expected</strong></p>
-            <p>All conditions satisfied at <span id="signalTimestamp">--:--:--</span></p>
-            <p>Confidence Level: <span id="signalConfidence">HIGH</span> | Spot Price: <span id="signalSpot">--</span></p>
+            <p>All conditions satisfied at <span id="bearishSignalTimestamp">--:--:--</span></p>
+            <p>Confidence Level: <span id="bearishSignalConfidence">HIGH</span> | Spot Price: <span id="bearishSignalSpot">--</span></p>
         </div>
 
         <!-- Activity Logs -->
@@ -544,6 +635,12 @@
         let volumeChart = null;
         let oiChart = null;
         let pcrChart = null;
+        
+        // Multi-Strike Chart Variables
+        let multiStrikeCallChart = null;
+        let multiStrikePutChart = null;
+        let multiStrikeCallVolumeChart = null;
+        let multiStrikePutVolumeChart = null;
 
         // Utility Functions
         function formatNumber(num) {
@@ -687,11 +784,38 @@
                 createPCRChart();
                 addLog('✅ PCR chart created', 'success');
 
+                // Create Multi-Strike Charts
+                createMultiStrikeCallChart();
+                addLog('✅ Multi-Strike Call chart created', 'success');
+                
+                createMultiStrikePutChart();
+                addLog('✅ Multi-Strike Put chart created', 'success');
+                
+                createMultiStrikeCallVolumeChart();
+                addLog('✅ Multi-Strike Call Volume chart created', 'success');
+                
+                createMultiStrikePutVolumeChart();
+                addLog('✅ Multi-Strike Put Volume chart created', 'success');
+
                 chartsReady = true;
                 document.getElementById('chartStatus').textContent = 'Ready';
                 document.getElementById('chartStatus').className = 'metric-value positive';
                 
-                addLog('✅ All 6 charts initialized successfully', 'success');
+                // DEBUG: Check if all charts were created successfully
+                console.log('🔍 DEBUG: Chart creation status:', {
+                    spotChart: !!spotChart,
+                    callChart: !!callChart,
+                    putChart: !!putChart,
+                    volumeChart: !!volumeChart,
+                    oiChart: !!oiChart,
+                    pcrChart: !!pcrChart,
+                    multiStrikeCallChart: !!multiStrikeCallChart,
+                    multiStrikePutChart: !!multiStrikePutChart,
+                    multiStrikeCallVolumeChart: !!multiStrikeCallVolumeChart,
+                    multiStrikePutVolumeChart: !!multiStrikePutVolumeChart
+                });
+                
+                addLog('✅ All 10 charts initialized successfully', 'success');
 
                 // Load historical data if available
                 if (historicalData) {
@@ -715,11 +839,17 @@
                     createVolumeChart();
                     createOIChart();
                     createPCRChart();
+                    
+                    // Create Multi-Strike Charts
+                    createMultiStrikeCallChart();
+                    createMultiStrikePutChart();
+                    createMultiStrikeCallVolumeChart();
+                    createMultiStrikePutVolumeChart();
 
                     chartsReady = true;
                     document.getElementById('chartStatus').textContent = 'Ready (v3.9)';
                     document.getElementById('chartStatus').className = 'metric-value positive';
-                    addLog('✅ All charts created with Chart.js v3.9', 'success');
+                    addLog('✅ All 10 charts created with Chart.js v3.9', 'success');
                     
                 } catch (altError) {
                     document.getElementById('chartStatus').textContent = 'Failed';
@@ -1151,6 +1281,416 @@
             console.log('PCR chart created successfully');
         }
 
+        // Multi-Strike Chart Creation Functions
+        function createMultiStrikeCallChart() {
+            const canvas = document.getElementById('multiStrikeCallChart');
+            if (!canvas) {
+                throw new Error('Multi-Strike Call chart canvas not found');
+            }
+            
+            console.log('Creating Multi-Strike Call chart...');
+            const ctx = canvas.getContext('2d');
+            multiStrikeCallChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['Loading...'],
+                    datasets: [
+                        {
+                            label: 'ATM-3 Call LTP',
+                            data: [0],
+                            borderColor: '#ef4444',
+                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                            borderWidth: 2,
+                            fill: false,
+                            tension: 0.1
+                        },
+                        {
+                            label: 'ATM-2 Call LTP',
+                            data: [0],
+                            borderColor: '#f97316',
+                            backgroundColor: 'rgba(249, 115, 22, 0.1)',
+                            borderWidth: 2,
+                            fill: false,
+                            tension: 0.1
+                        },
+                        {
+                            label: 'ATM-1 Call LTP',
+                            data: [0],
+                            borderColor: '#eab308',
+                            backgroundColor: 'rgba(234, 179, 8, 0.1)',
+                            borderWidth: 2,
+                            fill: false,
+                            tension: 0.1
+                        },
+                        {
+                            label: 'ATM Call LTP',
+                            data: [0],
+                            borderColor: '#22c55e',
+                            backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                            borderWidth: 3,
+                            fill: false,
+                            tension: 0.1
+                        },
+                        {
+                            label: 'ATM+1 Call LTP',
+                            data: [0],
+                            borderColor: '#06b6d4',
+                            backgroundColor: 'rgba(6, 182, 212, 0.1)',
+                            borderWidth: 2,
+                            fill: false,
+                            tension: 0.1
+                        },
+                        {
+                            label: 'ATM+2 Call LTP',
+                            data: [0],
+                            borderColor: '#3b82f6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            borderWidth: 2,
+                            fill: false,
+                            tension: 0.1
+                        },
+                        {
+                            label: 'ATM+3 Call LTP',
+                            data: [0],
+                            borderColor: '#8b5cf6',
+                            backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                            borderWidth: 2,
+                            fill: false,
+                            tension: 0.1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Multi-Strike Call LTP'
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Time (IST)'
+                            },
+                            ticks: {
+                                maxTicksLimit: 10
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Last Traded Price (₹)'
+                            }
+                        }
+                    }
+                }
+            });
+            console.log('Multi-Strike Call chart created successfully');
+        }
+
+        function createMultiStrikePutChart() {
+            const canvas = document.getElementById('multiStrikePutChart');
+            if (!canvas) {
+                throw new Error('Multi-Strike Put chart canvas not found');
+            }
+            
+            console.log('Creating Multi-Strike Put chart...');
+            const ctx = canvas.getContext('2d');
+            multiStrikePutChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'ATM-3 Put LTP',
+                            data: [],
+                            borderColor: '#ef4444',
+                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                            borderWidth: 2,
+                            fill: false
+                        },
+                        {
+                            label: 'ATM-2 Put LTP',
+                            data: [],
+                            borderColor: '#f97316',
+                            backgroundColor: 'rgba(249, 115, 22, 0.1)',
+                            borderWidth: 2,
+                            fill: false
+                        },
+                        {
+                            label: 'ATM-1 Put LTP',
+                            data: [],
+                            borderColor: '#eab308',
+                            backgroundColor: 'rgba(234, 179, 8, 0.1)',
+                            borderWidth: 2,
+                            fill: false
+                        },
+                        {
+                            label: 'ATM Put LTP',
+                            data: [],
+                            borderColor: '#dc2626',
+                            backgroundColor: 'rgba(220, 38, 38, 0.1)',
+                            borderWidth: 3,
+                            fill: false
+                        },
+                        {
+                            label: 'ATM+1 Put LTP',
+                            data: [],
+                            borderColor: '#06b6d4',
+                            backgroundColor: 'rgba(6, 182, 212, 0.1)',
+                            borderWidth: 2,
+                            fill: false
+                        },
+                        {
+                            label: 'ATM+2 Put LTP',
+                            data: [],
+                            borderColor: '#3b82f6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            borderWidth: 2,
+                            fill: false
+                        },
+                        {
+                            label: 'ATM+3 Put LTP',
+                            data: [],
+                            borderColor: '#8b5cf6',
+                            backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                            borderWidth: 2,
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Time (IST)'
+                            },
+                            ticks: {
+                                maxTicksLimit: 10
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Last Traded Price (₹)'
+                            }
+                        }
+                    }
+                }
+            });
+            console.log('Multi-Strike Put chart created successfully');
+        }
+
+        function createMultiStrikeCallVolumeChart() {
+            const canvas = document.getElementById('multiStrikeCallVolumeChart');
+            if (!canvas) {
+                throw new Error('Multi-Strike Call Volume chart canvas not found');
+            }
+            
+            console.log('Creating Multi-Strike Call Volume chart...');
+            const ctx = canvas.getContext('2d');
+            multiStrikeCallVolumeChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'ATM-3 Call Vol',
+                            data: [],
+                            borderColor: '#ef4444',
+                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                            borderWidth: 2,
+                            fill: false
+                        },
+                        {
+                            label: 'ATM-2 Call Vol',
+                            data: [],
+                            borderColor: '#f97316',
+                            backgroundColor: 'rgba(249, 115, 22, 0.1)',
+                            borderWidth: 2,
+                            fill: false
+                        },
+                        {
+                            label: 'ATM-1 Call Vol',
+                            data: [],
+                            borderColor: '#eab308',
+                            backgroundColor: 'rgba(234, 179, 8, 0.1)',
+                            borderWidth: 2,
+                            fill: false
+                        },
+                        {
+                            label: 'ATM Call Vol',
+                            data: [],
+                            borderColor: '#22c55e',
+                            backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                            borderWidth: 3,
+                            fill: false
+                        },
+                        {
+                            label: 'ATM+1 Call Vol',
+                            data: [],
+                            borderColor: '#06b6d4',
+                            backgroundColor: 'rgba(6, 182, 212, 0.1)',
+                            borderWidth: 2,
+                            fill: false
+                        },
+                        {
+                            label: 'ATM+2 Call Vol',
+                            data: [],
+                            borderColor: '#3b82f6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            borderWidth: 2,
+                            fill: false
+                        },
+                        {
+                            label: 'ATM+3 Call Vol',
+                            data: [],
+                            borderColor: '#8b5cf6',
+                            backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                            borderWidth: 2,
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Time (IST)'
+                            },
+                            ticks: {
+                                maxTicksLimit: 10
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Volume'
+                            }
+                        }
+                    }
+                }
+            });
+            console.log('Multi-Strike Call Volume chart created successfully');
+        }
+
+        function createMultiStrikePutVolumeChart() {
+            const canvas = document.getElementById('multiStrikePutVolumeChart');
+            if (!canvas) {
+                throw new Error('Multi-Strike Put Volume chart canvas not found');
+            }
+            
+            console.log('Creating Multi-Strike Put Volume chart...');
+            const ctx = canvas.getContext('2d');
+            multiStrikePutVolumeChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'ATM-3 Put Vol',
+                            data: [],
+                            borderColor: '#ef4444',
+                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                            borderWidth: 2,
+                            fill: false
+                        },
+                        {
+                            label: 'ATM-2 Put Vol',
+                            data: [],
+                            borderColor: '#f97316',
+                            backgroundColor: 'rgba(249, 115, 22, 0.1)',
+                            borderWidth: 2,
+                            fill: false
+                        },
+                        {
+                            label: 'ATM-1 Put Vol',
+                            data: [],
+                            borderColor: '#eab308',
+                            backgroundColor: 'rgba(234, 179, 8, 0.1)',
+                            borderWidth: 2,
+                            fill: false
+                        },
+                        {
+                            label: 'ATM Put Vol',
+                            data: [],
+                            borderColor: '#dc2626',
+                            backgroundColor: 'rgba(220, 38, 38, 0.1)',
+                            borderWidth: 3,
+                            fill: false
+                        },
+                        {
+                            label: 'ATM+1 Put Vol',
+                            data: [],
+                            borderColor: '#06b6d4',
+                            backgroundColor: 'rgba(6, 182, 212, 0.1)',
+                            borderWidth: 2,
+                            fill: false
+                        },
+                        {
+                            label: 'ATM+2 Put Vol',
+                            data: [],
+                            borderColor: '#3b82f6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            borderWidth: 2,
+                            fill: false
+                        },
+                        {
+                            label: 'ATM+3 Put Vol',
+                            data: [],
+                            borderColor: '#8b5cf6',
+                            backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                            borderWidth: 2,
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Time (IST)'
+                            },
+                            ticks: {
+                                maxTicksLimit: 10
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Volume'
+                            }
+                        }
+                    }
+                }
+            });
+            console.log('Multi-Strike Put Volume chart created successfully');
+        }
+
         // Update charts with historical data
         function updateChartsWithHistoricalData() {
             if (!chartsReady || !historicalData) {
@@ -1231,7 +1771,63 @@
                     pcrChart.update();
                 }
 
-                addLog('✅ All charts updated with timestamped historical data', 'success');
+                // Update Multi-Strike Call Chart
+                if (multiStrikeCallChart && historicalData.atmM3Calls) {
+                    multiStrikeCallChart.data.labels = timeLabels;
+                    multiStrikeCallChart.data.datasets[0].data = historicalData.atmM3Calls.ltp || [];
+                    multiStrikeCallChart.data.datasets[1].data = historicalData.atmM2Calls.ltp || [];
+                    multiStrikeCallChart.data.datasets[2].data = historicalData.atmM1Calls.ltp || [];
+                    multiStrikeCallChart.data.datasets[3].data = historicalData.calls.ltp || [];
+                    multiStrikeCallChart.data.datasets[4].data = historicalData.atmP1Calls.ltp || [];
+                    multiStrikeCallChart.data.datasets[5].data = historicalData.atmP2Calls.ltp || [];
+                    multiStrikeCallChart.data.datasets[6].data = historicalData.atmP3Calls.ltp || [];
+                    multiStrikeCallChart.options.scales.x.title.text = 'Time (IST)';
+                    multiStrikeCallChart.update();
+                }
+
+                // Update Multi-Strike Put Chart
+                if (multiStrikePutChart && historicalData.atmM3Puts) {
+                    multiStrikePutChart.data.labels = timeLabels;
+                    multiStrikePutChart.data.datasets[0].data = historicalData.atmM3Puts.ltp || [];
+                    multiStrikePutChart.data.datasets[1].data = historicalData.atmM2Puts.ltp || [];
+                    multiStrikePutChart.data.datasets[2].data = historicalData.atmM1Puts.ltp || [];
+                    multiStrikePutChart.data.datasets[3].data = historicalData.puts.ltp || [];
+                    multiStrikePutChart.data.datasets[4].data = historicalData.atmP1Puts.ltp || [];
+                    multiStrikePutChart.data.datasets[5].data = historicalData.atmP2Puts.ltp || [];
+                    multiStrikePutChart.data.datasets[6].data = historicalData.atmP3Puts.ltp || [];
+                    multiStrikePutChart.options.scales.x.title.text = 'Time (IST)';
+                    multiStrikePutChart.update();
+                }
+
+                // Update Multi-Strike Call Volume Chart
+                if (multiStrikeCallVolumeChart && historicalData.atmM3Calls) {
+                    multiStrikeCallVolumeChart.data.labels = timeLabels;
+                    multiStrikeCallVolumeChart.data.datasets[0].data = historicalData.atmM3Calls.volume || [];
+                    multiStrikeCallVolumeChart.data.datasets[1].data = historicalData.atmM2Calls.volume || [];
+                    multiStrikeCallVolumeChart.data.datasets[2].data = historicalData.atmM1Calls.volume || [];
+                    multiStrikeCallVolumeChart.data.datasets[3].data = historicalData.calls.volume || [];
+                    multiStrikeCallVolumeChart.data.datasets[4].data = historicalData.atmP1Calls.volume || [];
+                    multiStrikeCallVolumeChart.data.datasets[5].data = historicalData.atmP2Calls.volume || [];
+                    multiStrikeCallVolumeChart.data.datasets[6].data = historicalData.atmP3Calls.volume || [];
+                    multiStrikeCallVolumeChart.options.scales.x.title.text = 'Time (IST)';
+                    multiStrikeCallVolumeChart.update();
+                }
+
+                // Update Multi-Strike Put Volume Chart
+                if (multiStrikePutVolumeChart && historicalData.atmM3Puts) {
+                    multiStrikePutVolumeChart.data.labels = timeLabels;
+                    multiStrikePutVolumeChart.data.datasets[0].data = historicalData.atmM3Puts.volume || [];
+                    multiStrikePutVolumeChart.data.datasets[1].data = historicalData.atmM2Puts.volume || [];
+                    multiStrikePutVolumeChart.data.datasets[2].data = historicalData.atmM1Puts.volume || [];
+                    multiStrikePutVolumeChart.data.datasets[3].data = historicalData.puts.volume || [];
+                    multiStrikePutVolumeChart.data.datasets[4].data = historicalData.atmP1Puts.volume || [];
+                    multiStrikePutVolumeChart.data.datasets[5].data = historicalData.atmP2Puts.volume || [];
+                    multiStrikePutVolumeChart.data.datasets[6].data = historicalData.atmP3Puts.volume || [];
+                    multiStrikePutVolumeChart.options.scales.x.title.text = 'Time (IST)';
+                    multiStrikePutVolumeChart.update();
+                }
+
+                addLog('✅ All 10 charts updated with timestamped historical data', 'success');
 
             } catch (error) {
                 console.error('Chart update error:', error);
@@ -1276,7 +1872,7 @@
         function loadHistoricalDataSummary() {
             addLog('📊 Loading historical data summary...', 'info');
             
-            apiCall('historical-summary')
+            apiCall('data/historical/summary')
                 .then(response => {
                     if (response.success && response.data) {
                         const data = response.data;
@@ -1306,7 +1902,7 @@
             
             setButtonLoading('loadHistoricalBtn', true);
             
-            let endpoint = 'historical-data';
+            let endpoint = 'data/historical';
             const params = new URLSearchParams();
             
             if (timeframe && timeframe !== 'all') {
@@ -1362,7 +1958,7 @@
             addLog('🗑️ Clearing historical data...', 'warning');
             setButtonLoading('clearHistoricalBtn', true);
             
-            apiCall('historical-data', { method: 'DELETE' })
+            apiCall('data/historical', { method: 'DELETE' })
                 .then(response => {
                     if (response.success) {
                         addLog('✅ Historical data cleared successfully', 'success');
@@ -1398,7 +1994,7 @@
             
             const link = document.createElement('a');
             link.href = `${API_BASE_URL}/api/export-historical-data`;
-            link.download = `nifty_historical_data_${new Date().toISOString().split('T')[0]}.xlsx`;
+            link.download = `nifty_historical_data_v1_${new Date().toISOString().split('T')[0]}.xlsx`;
             link.click();
             
             addLog('✅ Export download started', 'success');
@@ -1420,7 +2016,7 @@
 
             setButtonLoading('loginUrlBtn', true);
             
-            apiCall('login-url')
+            apiCall('auth/login-url')
                 .then(response => {
                     if (response.success) {
                         addLog('✅ Login URL generated successfully', 'success');
@@ -1455,7 +2051,7 @@
             updateConnectionStatus('connecting', 'Authenticating...');
             addLog('🔐 Generating access token...', 'info');
 
-            apiCall('generate-token', {
+            apiCall('auth/generate-token', {
                 method: 'POST',
                 body: JSON.stringify({ request_token: requestToken })
             })
@@ -1496,7 +2092,7 @@
         }
 
         function setAccessToken() {
-            return apiCall('set-token', {
+            return apiCall('auth/set-token', {
                 method: 'POST',
                 body: JSON.stringify({ access_token: accessToken })
             })
@@ -1529,7 +2125,7 @@
                 nextUpdateEl.classList.add('urgent');
             }
             
-            return apiCall('nifty-data')
+            return apiCall('data/nifty')
                 .then(response => {
                     if (response.success) {
                         currentData = response.data;
@@ -1619,6 +2215,46 @@
                 document.getElementById('putIV').textContent = 'No Data';
                 document.getElementById('putChange').textContent = 'No Data';
             }
+
+            // Update Multi-Strike Table
+            updateMultiStrikeTable();
+        }
+
+        function updateMultiStrikeTable() {
+            if (!currentData) return;
+
+            const atmStrike = currentData.atm_strike;
+            const strikeInterval = 50;
+            const tableBody = document.getElementById('multiStrikeTableBody');
+            
+            if (!tableBody) return;
+
+            let tableHTML = '';
+
+            // Create rows for ATM-3 to ATM+3
+            for (let i = -3; i <= 3; i++) {
+                const strike = atmStrike + (i * strikeInterval);
+                const callOption = currentData.options[strike]?.CE;
+                const putOption = currentData.options[strike]?.PE;
+                
+                const isATM = i === 0;
+                const rowClass = isATM ? 'style="background: #fef3c7; font-weight: bold;"' : '';
+                const strikeLabel = isATM ? `${strike} (ATM)` : `${strike} (ATM${i > 0 ? '+' : ''}${i})`;
+
+                tableHTML += `
+                    <tr ${rowClass}>
+                        <td style="padding: 6px; border: 1px solid #e5e7eb; text-align: center; font-weight: ${isATM ? 'bold' : 'normal'};">${strikeLabel}</td>
+                        <td style="padding: 6px; border: 1px solid #e5e7eb; text-align: right; color: #059669;">${formatNumber(callOption?.oi || 0)}</td>
+                        <td style="padding: 6px; border: 1px solid #e5e7eb; text-align: right; color: #059669;">${formatNumber(callOption?.volume || 0)}</td>
+                        <td style="padding: 6px; border: 1px solid #e5e7eb; text-align: right; color: #059669; font-weight: bold;">${callOption?.last_price ? callOption.last_price.toFixed(2) : '--'}</td>
+                        <td style="padding: 6px; border: 1px solid #e5e7eb; text-align: right; color: #dc2626; font-weight: bold;">${putOption?.last_price ? putOption.last_price.toFixed(2) : '--'}</td>
+                        <td style="padding: 6px; border: 1px solid #e5e7eb; text-align: right; color: #dc2626;">${formatNumber(putOption?.volume || 0)}</td>
+                        <td style="padding: 6px; border: 1px solid #e5e7eb; text-align: right; color: #dc2626;">${formatNumber(putOption?.oi || 0)}</td>
+                    </tr>
+                `;
+            }
+
+            tableBody.innerHTML = tableHTML;
         }
 
         // Market Indicators Functions
@@ -1759,20 +2395,21 @@
                 return;
             }
 
-            const conditions = {
+            // Bullish Signal Conditions
+            const bullishConditions = {
                 condition1: {
                     title: 'ATM Call Volume > 1M',
-                    description: 'High call volume indicates activity',
+                    description: 'High call volume indicates bullish activity',
                     status: (atmCall.volume || 0) > 1000000,
-                    value: `Volume: ${formatNumber(atmCall.volume || 0)}`,
-                    details: 'Large volume indicates institutional activity'
+                    value: `Call Volume: ${formatNumber(atmCall.volume || 0)}`,
+                    details: 'Large call volume indicates institutional bullish activity'
                 },
                 condition2: {
-                    title: 'ATM Put Volume < Call Volume',
-                    description: 'Put activity lower than call activity',
-                    status: (atmPut.volume || 0) < (atmCall.volume || 0),
+                    title: 'Call Volume > Put Volume',
+                    description: 'Call activity higher than put activity',
+                    status: (atmCall.volume || 0) > (atmPut.volume || 0),
                     value: `Put/Call Ratio: ${((atmPut.volume || 0) / (atmCall.volume || 1)).toFixed(2)}`,
-                    details: 'Lower put volume suggests bearish sentiment'
+                    details: 'Higher call volume suggests bullish sentiment'
                 },
                 condition3: {
                     title: 'Call LTP > Put LTP',
@@ -1783,21 +2420,72 @@
                 }
             };
 
-            updateConditionsDisplay(conditions);
+            // Bearish Signal Conditions
+            const bearishConditions = {
+                condition1: {
+                    title: 'ATM Put Volume > 1M',
+                    description: 'High put volume indicates bearish activity',
+                    status: (atmPut.volume || 0) > 1000000,
+                    value: `Put Volume: ${formatNumber(atmPut.volume || 0)}`,
+                    details: 'Large put volume indicates institutional bearish activity'
+                },
+                condition2: {
+                    title: 'Put Volume > Call Volume',
+                    description: 'Put activity higher than call activity',
+                    status: (atmPut.volume || 0) > (atmCall.volume || 0),
+                    value: `Put/Call Ratio: ${((atmPut.volume || 0) / (atmCall.volume || 1)).toFixed(2)}`,
+                    details: 'Higher put volume suggests bearish sentiment'
+                },
+                condition3: {
+                    title: 'Put LTP > Call LTP',
+                    description: 'Put options more expensive than calls',
+                    status: (atmPut.last_price || 0) > (atmCall.last_price || 0),
+                    value: `Put: ₹${(atmPut.last_price || 0).toFixed(2)} | Call: ₹${(atmCall.last_price || 0).toFixed(2)}`,
+                    details: 'Higher put prices indicate bearish bias'
+                }
+            };
 
-            const allMet = Object.values(conditions).every(c => c.status === true);
-            
-            if (allMet) {
-                showSignalAlert();
-                addLog('🚨 SIGNAL DETECTED - All conditions satisfied', 'warning');
+            // Check which signal type to display
+            const bullishAllMet = Object.values(bullishConditions).every(c => c.status === true);
+            const bearishAllMet = Object.values(bearishConditions).every(c => c.status === true);
+
+            if (bullishAllMet) {
+                updateConditionsDisplay(bullishConditions, 'bullish');
+                showBullishSignalAlert();
+                addLog('🚀 BULLISH SIGNAL DETECTED - All bullish conditions satisfied', 'success');
+                hideBearishSignalAlert();
+            } else if (bearishAllMet) {
+                updateConditionsDisplay(bearishConditions, 'bearish');
+                showBearishSignalAlert();
+                addLog('🚨 BEARISH SIGNAL DETECTED - All bearish conditions satisfied', 'warning');
+                hideBullishSignalAlert();
             } else {
-                hideSignalAlert();
+                // Show the more likely signal conditions (or default to bullish)
+                const bullishMetCount = Object.values(bullishConditions).filter(c => c.status === true).length;
+                const bearishMetCount = Object.values(bearishConditions).filter(c => c.status === true).length;
+                
+                if (bearishMetCount > bullishMetCount) {
+                    updateConditionsDisplay(bearishConditions, 'bearish');
+                } else {
+                    updateConditionsDisplay(bullishConditions, 'bullish');
+                }
+                
+                hideBullishSignalAlert();
+                hideBearishSignalAlert();
             }
         }
 
-        function updateConditionsDisplay(conditions) {
+        function updateConditionsDisplay(conditions, signalType) {
             const conditionsGrid = document.getElementById('conditionsGrid');
             conditionsGrid.innerHTML = '';
+            
+            // Add signal type header
+            const headerDiv = document.createElement('div');
+            headerDiv.style.cssText = 'margin-bottom: 12px; padding: 8px; border-radius: 4px; font-weight: bold; text-align: center;';
+            headerDiv.style.backgroundColor = signalType === 'bullish' ? '#dcfce7' : '#fee2e2';
+            headerDiv.style.color = signalType === 'bullish' ? '#166534' : '#991b1b';
+            headerDiv.textContent = `${signalType.toUpperCase()} SIGNAL CONDITIONS`;
+            conditionsGrid.appendChild(headerDiv);
             
             Object.entries(conditions).forEach(([key, condition]) => {
                 const conditionDiv = document.createElement('div');
@@ -1815,15 +2503,26 @@
             });
         }
 
-        function showSignalAlert() {
-            const signalAlert = document.getElementById('signalAlert');
-            signalAlert.classList.remove('hidden');
-            document.getElementById('signalTimestamp').textContent = formatTime();
-            document.getElementById('signalSpot').textContent = currentData.spot_price.toFixed(2);
+        function showBullishSignalAlert() {
+            const bullishAlert = document.getElementById('bullishSignalAlert');
+            bullishAlert.classList.remove('hidden');
+            document.getElementById('bullishSignalTimestamp').textContent = formatTime();
+            document.getElementById('bullishSignalSpot').textContent = currentData.spot_price.toFixed(2);
         }
 
-        function hideSignalAlert() {
-            document.getElementById('signalAlert').classList.add('hidden');
+        function hideBullishSignalAlert() {
+            document.getElementById('bullishSignalAlert').classList.add('hidden');
+        }
+
+        function showBearishSignalAlert() {
+            const bearishAlert = document.getElementById('bearishSignalAlert');
+            bearishAlert.classList.remove('hidden');
+            document.getElementById('bearishSignalTimestamp').textContent = formatTime();
+            document.getElementById('bearishSignalSpot').textContent = currentData.spot_price.toFixed(2);
+        }
+
+        function hideBearishSignalAlert() {
+            document.getElementById('bearishSignalAlert').classList.add('hidden');
         }
 
         // Tracking Functions
@@ -2228,7 +2927,11 @@ Check browser console for detailed objects.
         console.log('📊 Chart system: Chart.js (reliable and proven)');
         console.log('💾 Backend integration: Full historical data support');
         console.log('📈 Market Indicators: 6 professional technical indicators');
+        console.log('🚨 Breakout Detection: 7 high-probability pattern detection techniques');
         console.log('🔧 Debug functions available: window.debugFunctions');
     </script>
+    
+    <!-- Breakout Signals Module -->
+    <script src="breakout-signals.js"></script>
 </body>
 </html>
