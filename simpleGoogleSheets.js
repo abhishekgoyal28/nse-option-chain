@@ -108,7 +108,7 @@ class SimpleGoogleSheetsStorage {
                 totalPutOI
             ];
 
-            const url = `${this.baseUrl}/values/NIFTY_Historical_Data!A:T:append?valueInputOption=RAW&key=${this.apiKey}`;
+            const url = `${this.baseUrl}/values/NIFTY_Historical_Data_v1!A:T:append?valueInputOption=RAW&key=${this.apiKey}`;
             
             await this.makeRequest(url, 'POST', {
                 values: [rowData]

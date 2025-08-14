@@ -189,7 +189,7 @@ class ReliableGoogleSheetsStorage {
             console.log('💾 Saving to Google Sheets - Call OI:', atmCall.oi, 'Put OI:', atmPut.oi, 'Call Vol:', atmCall.volume, 'Put Vol:', atmPut.volume);
 
             // Try different sheet names - start with Sheet1 (default)
-            const sheetNames = ['Sheet1', 'NIFTY_Historical_Data', 'Sheet 1'];
+            const sheetNames = ['NIFTY_Historical_Data_v1'];
             let success = false;
             
             for (const sheetName of sheetNames) {
@@ -214,7 +214,7 @@ class ReliableGoogleSheetsStorage {
             }
             
             if (!success) {
-                throw new Error('No valid sheet found. Please ensure your Google Sheet has a tab named "Sheet1" or "NIFTY_Historical_Data"');
+                throw new Error('No valid sheet found. Please ensure your Google Sheet has a tab named "NIFTY_Historical_Data_v1"');
             }
 
             return true;
