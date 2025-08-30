@@ -30,7 +30,7 @@ export const helmetConfig = helmet({
 });
 
 // Rate limiting configuration
-export const createRateLimiter = (windowMs: number = 15 * 60 * 1000, max: number = 1000) => {
+export const createRateLimiter = (windowMs: number = 15 * 60 * 1000, max: number = 1500) => {
   return rateLimit({
     windowMs,
     max,
@@ -45,10 +45,10 @@ export const createRateLimiter = (windowMs: number = 15 * 60 * 1000, max: number
 };
 
 // API rate limiter
-export const apiLimiter = createRateLimiter(15 * 60 * 1000, 100); // 100 requests per 15 minutes
+export const apiLimiter = createRateLimiter(15 * 60 * 1000, 1000); // 100 requests per 15 minutes
 
 // Strict rate limiter for sensitive endpoints
-export const strictLimiter = createRateLimiter(15 * 60 * 1000, 10); // 10 requests per 15 minutes
+export const strictLimiter = createRateLimiter(15 * 60 * 1000, 200); // 10 requests per 15 minutes
 
 // Compression middleware
 export const compressionMiddleware = compression({
