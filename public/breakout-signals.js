@@ -330,16 +330,16 @@ class BreakoutSignalsManager {
 
     async fetchBreakoutData() {
         try {
-            // Fetch current breakouts
-            const response = await fetch('/api/breakouts/current');
+            // Fetch current data with breakout signals
+            const response = await fetch('/api/nifty-data');
             const data = await response.json();
             
-            if (data.success) {
-                this.signals = data.data.signals || [];
-                this.updateUI(data.data);
+            if (data.success && data.breakout_signals) {
+                this.signals = data.breakout_signals.signals || [];
+                this.updateUI(data.breakout_signals);
                 
                 // Check for high priority alerts
-                const highPrioritySignals = this.signals.filter(s => s.priority === 'HIGH');
+                const highPrioritySignals = this.signals.filter(s => s.strength > 0.7);
                 if (highPrioritySignals.length > 0) {
                     this.triggerAlert(highPrioritySignals);
                 }

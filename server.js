@@ -3,12 +3,14 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+const axios = require('axios');
 const xlsx = require('node-xlsx'); // npm install node-xlsx
 const KiteConnect = require('kiteconnect').KiteConnect;
 const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
 const compression = require('compression');
 const GoogleSheetsStorage = require('./reliableGoogleSheets');
+const BreakoutSignalGenerator = require('./breakoutSignalGenerator');
 require('dotenv').config();
 
 const app = express();
@@ -18,8 +20,9 @@ const PORT = process.env.PORT || 3000;
 const DATA_DIR = path.join(__dirname, 'data');
 const HISTORY_FILE = path.join(DATA_DIR, 'nifty_history.xlsx');
 
-// Initialize Google Sheets storage
+// Initialize Google Sheets storage and breakout signal generator
 const googleSheetsStorage = new GoogleSheetsStorage();
+const breakoutSignalGenerator = new BreakoutSignalGenerator();
 
 // Ensure data directory exists
 if (!fs.existsSync(DATA_DIR)) {
@@ -362,6 +365,49 @@ function isMarketOpen() {
     }
 }
 
+// Helper function to get recent historical data for signal generation
+function getRecentHistoricalData(limit = 50) {
+    try {
+        if (fs.existsSync(HISTORY_FILE)) {
+            const workbook = xlsx.parse(HISTORY_FILE);
+            const data = workbook[0].data;
+            
+            // Skip header and get last 'limit' records
+            const recentData = data.slice(-limit).map(row => {
+                if (row.length < 4) return null;
+                
+                // Convert Excel row back to option chain format
+                return {
+                    records: {
+                        underlyingValue: row[3], // spot_price
+                        data: [{
+                            strikePrice: row[4], // atm_strike
+                            CE: {
+                                openInterest: row[6] || 0,
+                                totalTradedVolume: row[7] || 0,
+                                lastPrice: row[8] || 0,
+                                change: row[9] || 0
+                            },
+                            PE: {
+                                openInterest: row[11] || 0,
+                                totalTradedVolume: row[12] || 0,
+                                lastPrice: row[13] || 0,
+                                change: row[14] || 0
+                            }
+                        }]
+                    }
+                };
+            }).filter(Boolean);
+            
+            return recentData;
+        }
+        return [];
+    } catch (error) {
+        console.warn('⚠️  Error reading historical data for signals:', error.message);
+        return [];
+    }
+}
+
 async function saveHistoricalData(data) {
     try {
         // Check if market is open before saving data
@@ -374,9 +420,68 @@ async function saveHistoricalData(data) {
         let savedToGoogleSheets = false;
         let savedToExcel = false;
 
-        // Try to save to Google Sheets first
+        // Generate breakout signals (both original and enhanced)
+        let breakoutSignals = null;
+        let enhancedBreakoutSignals = null;
+        let advancedAnalytics = null;
+        
         try {
-            await googleSheetsStorage.saveNiftyData(data);
+            // Get historical data for signal generation (last 50 records)
+            const historicalData = getRecentHistoricalData(50);
+            
+            // Generate original breakout signals
+            breakoutSignals = breakoutSignalGenerator.generateBreakoutSignals(data, historicalData);
+            
+            // Generate enhanced breakout signals (if TypeScript service is available)
+            if (typeof generateEnhancedBreakoutSignals === 'function') {
+                enhancedBreakoutSignals = generateEnhancedBreakoutSignals(data, historicalData);
+            }
+            
+            // Generate advanced analytics (IV skew, GEX, OI clustering, patterns)
+            if (typeof generateAdvancedAnalytics === 'function') {
+                advancedAnalytics = generateAdvancedAnalytics(data, historicalData);
+                
+                if (advancedAnalytics) {
+                    console.log(`📊 Advanced Analytics Generated:`);
+                    console.log(`   IV Skew: ${advancedAnalytics.ivSkew.overallSkew.toFixed(2)} (velocity: ${advancedAnalytics.ivSkew.skewVelocity.toFixed(2)})`);
+                    console.log(`   GEX: ${advancedAnalytics.gex.totalGEX.toFixed(0)} (zone: ${advancedAnalytics.gex.dominantGammaZone})`);
+                    console.log(`   OI Clusters: ${advancedAnalytics.oiClusters.clusters.length} detected`);
+                    console.log(`   Patterns: ${advancedAnalytics.patterns.patternType} (confidence: ${(advancedAnalytics.patterns.confidence * 100).toFixed(0)}%)`);
+                    
+                    // Alert on significant findings
+                    if (advancedAnalytics.oiClusters.clusterBreakAlert) {
+                        console.log(`🚨 OI CLUSTER BREAK DETECTED!`);
+                    }
+                    if (advancedAnalytics.patterns.discordDetected) {
+                        console.log(`🚨 PRICE DISCORD DETECTED!`);
+                    }
+                    if (Math.abs(advancedAnalytics.gex.totalGEX) > 100000) {
+                        console.log(`🚨 HIGH GAMMA EXPOSURE: ${advancedAnalytics.gex.totalGEX.toFixed(0)}`);
+                    }
+                }
+            }
+            
+            if (breakoutSignals.signalCount > 0) {
+                console.log(`🚨 Generated ${breakoutSignals.signalCount} breakout signals: ${breakoutSignals.primarySignalType} (${breakoutSignals.signalDirection})`);
+            }
+            
+            if (enhancedBreakoutSignals && enhancedBreakoutSignals.length > 0) {
+                console.log(`🎯 Generated ${enhancedBreakoutSignals.length} enhanced breakout signals`);
+                
+                // Log high confidence signals
+                const highConfidenceSignals = enhancedBreakoutSignals.filter(s => s.confidence >= 0.8);
+                if (highConfidenceSignals.length > 0) {
+                    console.log(`⚡ HIGH CONFIDENCE SIGNALS: ${highConfidenceSignals.map(s => s.type).join(', ')}`);
+                }
+            }
+            
+        } catch (signalError) {
+            console.warn('⚠️  Failed to generate signals/analytics:', signalError.message);
+        }
+
+        // Try to save to Google Sheets first (with all analytics)
+        try {
+            await googleSheetsStorage.saveNiftyData(data, breakoutSignals, enhancedBreakoutSignals, advancedAnalytics);
             savedToGoogleSheets = true;
             console.log('✅ Data saved to Google Sheets successfully');
         } catch (googleError) {
@@ -385,7 +490,7 @@ async function saveHistoricalData(data) {
 
         // Save to Excel as fallback or if Google Sheets failed
         try {
-            savedToExcel = saveToExcel(data, timestamp);
+            savedToExcel = saveToExcel(data, timestamp, breakoutSignals, enhancedBreakoutSignals, advancedAnalytics);
             if (savedToExcel) {
                 console.log('✅ Data saved to Excel successfully');
             }
@@ -402,7 +507,7 @@ async function saveHistoricalData(data) {
     }
 }
 
-function saveToExcel(data, timestamp) {
+function saveToExcel(data, timestamp, breakoutSignals = null, enhancedBreakoutSignals = null) {
     try {
         const istTimestamp = new Date(timestamp.toLocaleString("en-US", {timeZone: "Asia/Kolkata"}));
         const atmCall = data.options[data.atm_strike]?.CE;
@@ -428,7 +533,33 @@ function saveToExcel(data, timestamp) {
         const pcrVolume = totalPutOI > 0 ? (atmPut.volume / atmCall.volume) : 0;
         const pcrOI = totalCallOI > 0 ? (totalPutOI / totalCallOI) : 0;
 
-        // Create new row with IST timestamp
+        // Process breakout signals
+        const signalsData = breakoutSignals || {
+            signals: [],
+            signalCount: 0,
+            primarySignalType: null,
+            signalStrength: 0,
+            signalDirection: 'neutral',
+            timestamp: timestamp.toISOString()
+        };
+
+        // Process enhanced breakout signals
+        let enhancedSignalData = ['', '', 0, 0, 0];  // [topSignalType, direction, avgConfidence, signalCount, highConfidenceCount]
+        if (enhancedBreakoutSignals && enhancedBreakoutSignals.length > 0) {
+            const highConfidenceSignals = enhancedBreakoutSignals.filter(s => s.confidence >= 0.8);
+            const avgConfidence = enhancedBreakoutSignals.reduce((sum, s) => sum + s.confidence, 0) / enhancedBreakoutSignals.length;
+            const topSignal = enhancedBreakoutSignals.sort((a, b) => b.confidence - a.confidence)[0];
+            
+            enhancedSignalData = [
+                topSignal.type || '',
+                topSignal.direction || '',
+                Math.round(avgConfidence * 100) / 100,
+                enhancedBreakoutSignals.length,
+                highConfidenceSignals.length
+            ];
+        }
+
+        // Create new row with IST timestamp and both signal types
         const newRow = [
             istTimestamp.toISOString(),
             istTimestamp.toDateString(),
@@ -449,7 +580,18 @@ function saveToExcel(data, timestamp) {
             pcrVolume,
             pcrOI,
             totalCallOI,
-            totalPutOI
+            totalPutOI,
+            // Original breakout signals
+            JSON.stringify(signalsData.signals),
+            signalsData.signalCount,
+            signalsData.primarySignalType || '',
+            signalsData.signalStrength,
+            signalsData.signalDirection,
+            signalsData.timestamp,
+            signalsData.signals.map(s => s.conditions_met?.join(',')).join(';'),
+            // Enhanced breakout signals
+            ...enhancedSignalData,  // [topSignalType, direction, avgConfidence, signalCount, highConfidenceCount]
+            JSON.stringify(enhancedBreakoutSignals || [])  // Full enhanced signals data
         ];
 
         // Add new row to existing data
@@ -752,9 +894,58 @@ app.get('/api/nifty-data', async (req, res) => {
             
             const marketOpen = isMarketOpen();
             
+            // Generate current breakout signals
+            let breakoutSignals = null;
+            let advancedAnalytics = null;
+            
+            try {
+                const historicalData = getRecentHistoricalData(50);
+                breakoutSignals = breakoutSignalGenerator.generateBreakoutSignals(latestOptionData, historicalData);
+                
+                // Generate advanced analytics
+                if (typeof generateAdvancedAnalytics === 'function') {
+                    advancedAnalytics = generateAdvancedAnalytics(latestOptionData, historicalData);
+                }
+            } catch (signalError) {
+                console.warn('⚠️  Failed to generate signals/analytics:', signalError.message);
+            }
+            
+            // Prepare response with advanced analytics
+            const responseData = {
+                ...latestOptionData,
+                // Add advanced analytics to the data object
+                advancedAnalytics: advancedAnalytics ? {
+                    ivSkew: {
+                        value: advancedAnalytics.ivSkew?.overallSkew || 0,
+                        velocity: advancedAnalytics.ivSkew?.skewVelocity || 0,
+                        interpretation: getIVSkewInterpretation(advancedAnalytics.ivSkew?.overallSkew || 0)
+                    },
+                    gex: {
+                        totalGEX: advancedAnalytics.gex?.totalGEX || 0,
+                        zeroGammaLevel: advancedAnalytics.gex?.zeroGammaLevel || 0,
+                        maxPainLevel: advancedAnalytics.gex?.maxPainLevel || 0,
+                        dominantZone: advancedAnalytics.gex?.dominantGammaZone || 'neutral',
+                        interpretation: getGEXInterpretation(advancedAnalytics.gex?.totalGEX || 0)
+                    },
+                    oiClusters: {
+                        count: advancedAnalytics.oiClusters?.clusters?.length || 0,
+                        migrationDetected: !!advancedAnalytics.oiClusters?.clusterMigration,
+                        breakAlert: advancedAnalytics.oiClusters?.clusterBreakAlert || false,
+                        interpretation: getOIClusterInterpretation(advancedAnalytics.oiClusters)
+                    },
+                    patterns: {
+                        type: advancedAnalytics.patterns?.patternType || 'normal',
+                        confidence: advancedAnalytics.patterns?.confidence || 0,
+                        motifDetected: advancedAnalytics.patterns?.motifDetected || false,
+                        discordDetected: advancedAnalytics.patterns?.discordDetected || false
+                    }
+                } : null
+            };
+            
             res.json({
                 success: true,
-                data: latestOptionData,
+                data: responseData,
+                breakout_signals: breakoutSignals,
                 source: 'memory',
                 last_updated: latestOptionData.timestamp,
                 market_status: {
@@ -1661,4 +1852,30 @@ function getPCRInterpretation(pcr) {
 
 function calculateAverage(arr) {
     return arr.reduce((sum, val) => sum + val, 0) / arr.length;
+}
+
+// Helper functions for advanced analytics interpretations
+function getIVSkewInterpretation(skew) {
+    if (skew > 5) return 'High Put Skew - Bearish Sentiment';
+    if (skew > 2) return 'Moderate Put Skew - Cautious';
+    if (skew < -5) return 'High Call Skew - Bullish Sentiment';
+    if (skew < -2) return 'Moderate Call Skew - Optimistic';
+    return 'Balanced Skew - Neutral';
+}
+
+function getGEXInterpretation(gex) {
+    if (gex > 100000) return 'High Positive GEX - Low Volatility Expected';
+    if (gex > 50000) return 'Moderate Positive GEX - Range Bound';
+    if (gex < -100000) return 'High Negative GEX - High Volatility Expected';
+    if (gex < -50000) return 'Moderate Negative GEX - Trending Market';
+    return 'Neutral GEX - Balanced';
+}
+
+function getOIClusterInterpretation(oiClusters) {
+    if (!oiClusters) return 'No Data';
+    if (oiClusters.clusterBreakAlert) return 'Cluster Break - Breakout Setup';
+    if (oiClusters.clusterMigration) return 'Smart Money Migration Detected';
+    if (oiClusters.clusters?.length > 2) return 'Multiple Clusters - Range Bound';
+    if (oiClusters.clusters?.length === 0) return 'No Strong Clusters - Large Moves Possible';
+    return 'Normal Clustering';
 }

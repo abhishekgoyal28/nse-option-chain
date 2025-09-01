@@ -131,6 +131,18 @@
         .condition-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
         .condition-title { font-weight: 600; font-size: 14px; }
         .condition-dot { width: 14px; height: 14px; border-radius: 50%; }
+        .condition-signals { display: flex; align-items: center; gap: 8px; }
+        .signal-flag { 
+            padding: 2px 6px; 
+            border-radius: 4px; 
+            font-size: 10px; 
+            font-weight: bold; 
+            text-align: center;
+            min-width: 50px;
+        }
+        .signal-bullish { background: #dcfce7; color: #166534; border: 1px solid #22c55e; }
+        .signal-bearish { background: #fee2e2; color: #991b1b; border: 1px solid #ef4444; }
+        .signal-neutral { background: #f3f4f6; color: #374151; border: 1px solid #9ca3af; }
         .condition-details { font-size: 12px; color: #6b7280; margin-bottom: 8px; }
         .condition-value { font-family: 'Courier New', monospace; font-size: 13px; font-weight: 600; }
         
@@ -171,6 +183,17 @@
     </style>
 </head>
 <body>
+    <!-- Navigation Header -->
+    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 15px 0; margin-bottom: 20px;">
+        <div class="container" style="display: flex; justify-content: space-between; align-items: center;">
+            <h1 style="color: white; margin: 0; font-size: 1.8rem;">📊 NSE Tracker</h1>
+            <div style="display: flex; gap: 20px;">
+                <a href="/" style="color: white; text-decoration: none; font-weight: 500;">Option Chain</a>
+                <a href="/stock-research.html" style="color: white; text-decoration: none; font-weight: 500;">🔍 Stock Research</a>
+            </div>
+        </div>
+    </div>
+
     <div class="container">
         <!-- Authentication Section -->
         <div class="auth-section">
@@ -1573,7 +1596,7 @@
             const spotPrice = currentData.spot_price;
             const atmStrike = currentData.atm_strike;
 
-            // Calculate indicators
+            // Calculate basic indicators
             const indicators = {
                 pcr_volume: {
                     title: 'Put-Call Volume Ratio',
@@ -1696,40 +1719,126 @@
                 return;
             }
 
-            const conditions = {
+            // Basic breakout conditions
+            const basicConditions = {
                 condition1: {
                     title: 'ATM Call Volume > 1M',
                     description: 'High call volume indicates activity',
                     status: (atmCall.volume || 0) > 1000000,
                     value: `Volume: ${formatNumber(atmCall.volume || 0)}`,
-                    details: 'Large volume indicates institutional activity'
+                    details: 'Large volume indicates institutional activity',
+                    signal: (atmCall.volume || 0) > 1000000 ? 'BULLISH' : 'NEUTRAL'
                 },
                 condition2: {
                     title: 'ATM Put Volume < Call Volume',
                     description: 'Put activity lower than call activity',
                     status: (atmPut.volume || 0) < (atmCall.volume || 0),
                     value: `Put/Call Ratio: ${((atmPut.volume || 0) / (atmCall.volume || 1)).toFixed(2)}`,
-                    details: 'Lower put volume suggests bearish sentiment'
+                    details: 'Lower put volume suggests bullish sentiment',
+                    signal: (atmPut.volume || 0) < (atmCall.volume || 0) ? 'BULLISH' : 'BEARISH'
                 },
                 condition3: {
                     title: 'Call LTP > Put LTP',
                     description: 'Call options more expensive than puts',
                     status: (atmCall.last_price || 0) > (atmPut.last_price || 0),
                     value: `Call: ₹${(atmCall.last_price || 0).toFixed(2)} | Put: ₹${(atmPut.last_price || 0).toFixed(2)}`,
-                    details: 'Higher call prices indicate bullish bias'
+                    details: 'Higher call prices indicate bullish bias',
+                    signal: (atmCall.last_price || 0) > (atmPut.last_price || 0) ? 'BULLISH' : 'BEARISH'
                 }
             };
 
-            updateConditionsDisplay(conditions);
-
-            const allMet = Object.values(conditions).every(c => c.status === true);
+            // Advanced analytics breakout signals
+            const advancedSignals = {};
             
-            if (allMet) {
+            if (currentData.advancedAnalytics) {
+                const analytics = currentData.advancedAnalytics;
+                
+                // Enhanced IV Skew Signal
+                advancedSignals.iv_skew_signal = {
+                    title: '🔬 Enhanced IV Skew Breakout',
+                    description: analytics.ivSkew?.interpretation || 'No data',
+                    status: Math.abs(analytics.ivSkew?.value || 0) > 3 || Math.abs(analytics.ivSkew?.velocity || 0) > 0.5,
+                    value: `${(analytics.ivSkew?.value || 0).toFixed(1)}% (${(analytics.ivSkew?.velocity || 0) > 0 ? '↗️' : (analytics.ivSkew?.velocity || 0) < 0 ? '↘️' : '→'}${Math.abs(analytics.ivSkew?.velocity || 0).toFixed(1)})`,
+                    details: `Velocity: ${(analytics.ivSkew?.velocity || 0).toFixed(2)} - ${Math.abs(analytics.ivSkew?.velocity || 0) > 0.5 ? 'Rapid change detected' : 'Stable'}`,
+                    signal: getIVSkewSignal(analytics.ivSkew?.value || 0, analytics.ivSkew?.velocity || 0)
+                };
+
+                // Gamma Exposure Signal
+                advancedSignals.gex_signal = {
+                    title: '🎲 Gamma Exposure Breakout',
+                    description: analytics.gex?.interpretation || 'No data',
+                    status: Math.abs(analytics.gex?.totalGEX || 0) > 50000,
+                    value: `${analytics.gex?.dominantZone === 'long' ? '🟢' : analytics.gex?.dominantZone === 'short' ? '🔴' : '🟡'} ${((analytics.gex?.totalGEX || 0)/1000).toFixed(0)}K`,
+                    details: `Zero Γ: ${(analytics.gex?.zeroGammaLevel || 0).toFixed(0)} | Max Pain: ${(analytics.gex?.maxPainLevel || 0).toFixed(0)}`,
+                    signal: getGEXSignal(analytics.gex?.totalGEX || 0, analytics.gex?.dominantZone || 'neutral')
+                };
+
+                // OI Clustering Signal
+                advancedSignals.oi_cluster_signal = {
+                    title: '🎯 OI Cluster Breakout',
+                    description: analytics.oiClusters?.interpretation || 'No data',
+                    status: analytics.oiClusters?.breakAlert || analytics.oiClusters?.migrationDetected,
+                    value: `${analytics.oiClusters?.count || 0} clusters ${analytics.oiClusters?.breakAlert ? '🚨' : ''}${analytics.oiClusters?.migrationDetected ? '📈' : ''}`,
+                    details: analytics.oiClusters?.breakAlert ? 'Cluster break detected - Breakout setup' : analytics.oiClusters?.migrationDetected ? 'Smart money migration detected' : 'Normal clustering',
+                    signal: getOIClusterSignal(analytics.oiClusters)
+                };
+
+                // Pattern Recognition Signal
+                advancedSignals.pattern_signal = {
+                    title: '🔍 Pattern Recognition Breakout',
+                    description: `Pattern: ${analytics.patterns?.type || 'normal'}`,
+                    status: analytics.patterns?.discordDetected || (analytics.patterns?.confidence || 0) > 0.7,
+                    value: `${((analytics.patterns?.confidence || 0) * 100).toFixed(0)}% ${analytics.patterns?.motifDetected ? '🔄' : ''}${analytics.patterns?.discordDetected ? '⚡' : ''}`,
+                    details: analytics.patterns?.discordDetected ? 'Anomaly detected - Potential breakout' : analytics.patterns?.motifDetected ? 'Recurring pattern identified' : 'Normal market behavior',
+                    signal: getPatternSignal(analytics.patterns)
+                };
+            }
+
+            // Combine all conditions
+            const allConditions = { ...basicConditions, ...advancedSignals };
+            updateConditionsDisplay(allConditions);
+
+            // Check for any breakout signals
+            const basicMet = Object.values(basicConditions).every(c => c.status === true);
+            const advancedMet = Object.values(advancedSignals).some(c => c.status === true);
+            
+            if (basicMet || advancedMet) {
                 showSignalAlert();
-                addLog('🚨 SIGNAL DETECTED - All conditions satisfied', 'warning');
+                if (basicMet) addLog('🚨 BASIC BREAKOUT SIGNAL - All conditions satisfied', 'warning');
+                if (advancedMet) addLog('🎯 ADVANCED BREAKOUT SIGNAL - Analytics detected breakout setup', 'warning');
             } else {
                 hideSignalAlert();
             }
+        }
+
+        // Helper functions for signal determination
+        function getIVSkewSignal(skew, velocity) {
+            if (skew > 5 && velocity > 0.5) return 'BEARISH';
+            if (skew > 3) return 'BEARISH';
+            if (skew < -3) return 'BULLISH';
+            if (Math.abs(velocity) > 0.5) return velocity > 0 ? 'BEARISH' : 'BULLISH';
+            return 'NEUTRAL';
+        }
+
+        function getGEXSignal(gex, zone) {
+            if (zone === 'short') return 'BEARISH'; // High volatility expected
+            if (zone === 'long') return 'NEUTRAL';  // Range bound
+            if (Math.abs(gex) > 100000) return gex > 0 ? 'NEUTRAL' : 'BEARISH';
+            return 'NEUTRAL';
+        }
+
+        function getOIClusterSignal(oiClusters) {
+            if (!oiClusters) return 'NEUTRAL';
+            if (oiClusters.breakAlert) return 'BULLISH'; // Breakout setup
+            if (oiClusters.migrationDetected) return 'BEARISH'; // Smart money moving
+            return 'NEUTRAL';
+        }
+
+        function getPatternSignal(patterns) {
+            if (!patterns) return 'NEUTRAL';
+            if (patterns.discordDetected) return 'BEARISH'; // Anomaly
+            if (patterns.motifDetected && patterns.confidence > 0.7) return 'BULLISH'; // Strong pattern
+            return 'NEUTRAL';
         }
 
         function updateConditionsDisplay(conditions) {
@@ -1739,10 +1848,18 @@
             Object.entries(conditions).forEach(([key, condition]) => {
                 const conditionDiv = document.createElement('div');
                 conditionDiv.className = `condition ${condition.status ? 'condition-met' : 'condition-not-met'}`;
+                
+                // Add signal flag styling
+                const signalClass = condition.signal === 'BULLISH' ? 'signal-bullish' : 
+                                  condition.signal === 'BEARISH' ? 'signal-bearish' : 'signal-neutral';
+                
                 conditionDiv.innerHTML = `
                     <div class="condition-header">
                         <div class="condition-title">${condition.title}</div>
-                        <div class="condition-dot" style="background-color: ${condition.status ? '#10b981' : '#ef4444'}"></div>
+                        <div class="condition-signals">
+                            <div class="signal-flag ${signalClass}">${condition.signal}</div>
+                            <div class="condition-dot" style="background-color: ${condition.status ? '#10b981' : '#ef4444'}"></div>
+                        </div>
                     </div>
                     <div class="condition-details">${condition.description}</div>
                     <div class="condition-value">${condition.value}</div>
@@ -2156,6 +2273,7 @@ Check browser console for detailed objects.
         console.log('📊 Chart system: Chart.js (reliable and proven)');
         console.log('💾 Backend integration: Full historical data support');
         console.log('📈 Market Indicators: 6 professional technical indicators');
+        console.log('🎯 Breakout Signals: Enhanced with 4 advanced analytics signals (IV Skew, GEX, OI Clusters, Patterns)');
         console.log('🔧 Debug functions available: window.debugFunctions');
     </script>
 
