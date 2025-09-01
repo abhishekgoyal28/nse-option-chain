@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Research - NSE Tracker</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .search-container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 30px;
+        }
+
+        .search-box {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 15px 20px;
+            font-size: 1.1rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .search-input:focus {
+            border-color: #667eea;
+        }
+
+        .search-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.1rem;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .search-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .search-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .suggestions {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 0 0 10px 10px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+        }
+
+        .suggestion-item {
+            padding: 10px 15px;
+            cursor: pointer;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .suggestion-item:hover {
+            background: #f8f9fa;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+
+        .results-container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            display: none;
+        }
+
+        .stock-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .stock-title h2 {
+            color: #333;
+            font-size: 1.8rem;
+            margin-bottom: 5px;
+        }
+
+        .stock-title p {
+            color: #666;
+            font-size: 1rem;
+        }
+
+        .stock-price {
+            text-align: right;
+        }
+
+        .price {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .change {
+            font-size: 1.1rem;
+            font-weight: bold;
+        }
+
+        .change.positive {
+            color: #28a745;
+        }
+
+        .change.negative {
+            color: #dc3545;
+        }
+
+        .data-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .data-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+        }
+
+        .data-card h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+
+        .data-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding: 5px 0;
+        }
+
+        .data-label {
+            color: #666;
+        }
+
+        .data-value {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .summary-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 20px;
+        }
+
+        .summary-card h3 {
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+        }
+
+        .key-points {
+            list-style: none;
+        }
+
+        .key-points li {
+            margin-bottom: 8px;
+            padding-left: 20px;
+            position: relative;
+        }
+
+        .key-points li:before {
+            content: "•";
+            position: absolute;
+            left: 0;
+            color: #fff;
+            font-weight: bold;
+        }
+
+        .news-item {
+            border-bottom: 1px solid #e0e0e0;
+            padding: 15px 0;
+        }
+
+        .news-item:last-child {
+            border-bottom: none;
+        }
+
+        .news-title {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .news-meta {
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 8px;
+        }
+
+        .news-summary {
+            color: #555;
+            line-height: 1.4;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: white;
+            text-decoration: none;
+            font-size: 1.1rem;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/" class="back-link">← Back to NSE Tracker</a>
+        
+        <div class="header">
+            <h1>🔍 Stock Research</h1>
+            <p>Get comprehensive analysis of any stock with latest news and insights</p>
+        </div>
+
+        <div class="search-container">
+            <div class="search-box">
+                <input type="text" class="search-input" placeholder="Enter stock name or symbol (e.g., Reliance, INFY, TCS)" id="searchInput">
+                <div class="suggestions" id="suggestions"></div>
+            </div>
+            <button class="search-btn" id="searchBtn">Research Stock</button>
+        </div>
+
+        <div class="loading" id="loading" style="display: none;">
+            <p>🔍 Researching stock... Please wait</p>
+        </div>
+
+        <div class="results-container" id="results"></div>
+    </div>
+
+    <script>
+        class StockResearch {
+            constructor() {
+                this.searchInput = document.getElementById('searchInput');
+                this.searchBtn = document.getElementById('searchBtn');
+                this.suggestions = document.getElementById('suggestions');
+                this.loading = document.getElementById('loading');
+                this.results = document.getElementById('results');
+                
+                this.setupEventListeners();
+            }
+
+            setupEventListeners() {
+                this.searchBtn.addEventListener('click', () => this.searchStock());
+                this.searchInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this.searchStock();
+                });
+                
+                // Auto-suggestions (simplified)
+                let timeout;
+                this.searchInput.addEventListener('input', (e) => {
+                    clearTimeout(timeout);
+                    timeout = setTimeout(() => this.getSuggestions(e.target.value), 300);
+                });
+
+                // Hide suggestions when clicking outside
+                document.addEventListener('click', (e) => {
+                    if (!this.searchInput.contains(e.target)) {
+                        this.suggestions.style.display = 'none';
+                    }
+                });
+            }
+
+            async getSuggestions(query) {
+                if (query.length < 2) {
+                    this.suggestions.style.display = 'none';
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`/api/stock-search?q=${encodeURIComponent(query)}`);
+                    const data = await response.json();
+                    
+                    if (data.success && data.suggestions.length > 0) {
+                        this.showSuggestions(data.suggestions);
+                    } else {
+                        this.suggestions.style.display = 'none';
+                    }
+                } catch (error) {
+                    console.error('Error fetching suggestions:', error);
+                    this.suggestions.style.display = 'none';
+                }
+            }
+
+            showSuggestions(suggestions) {
+                this.suggestions.innerHTML = suggestions.map(s => 
+                    `<div class="suggestion-item" onclick="stockResearch.selectSuggestion('${s.symbol}', '${s.name}')">
+                        <strong>${s.symbol}</strong> - ${s.name}
+                    </div>`
+                ).join('');
+                this.suggestions.style.display = 'block';
+            }
+
+            selectSuggestion(symbol, name) {
+                this.searchInput.value = `${symbol} - ${name}`;
+                this.suggestions.style.display = 'none';
+            }
+
+            async searchStock() {
+                const query = this.searchInput.value.trim();
+                if (!query) {
+                    alert('Please enter a stock name or symbol');
+                    return;
+                }
+
+                this.showLoading(true);
+                this.results.style.display = 'none';
+
+                try {
+                    const response = await fetch('/api/stock-research', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ query })
+                    });
+
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        this.displayResults(result.data);
+                    } else {
+                        this.showError(result.error || 'Failed to research stock');
+                    }
+                } catch (error) {
+                    console.error('Research error:', error);
+                    this.showError('Network error. Please try again.');
+                } finally {
+                    this.showLoading(false);
+                }
+            }
+
+            showLoading(show) {
+                this.loading.style.display = show ? 'block' : 'none';
+                this.searchBtn.disabled = show;
+                this.searchBtn.textContent = show ? 'Researching...' : 'Research Stock';
+            }
+
+            displayResults(data) {
+                const { symbol, company, data: stockData, news, summary } = data;
+                
+                const changeClass = stockData?.change > 0 ? 'positive' : stockData?.change < 0 ? 'negative' : '';
+                const changeSymbol = stockData?.change > 0 ? '+' : '';
+
+                this.results.innerHTML = `
+                    <div class="stock-header">
+                        <div class="stock-title">
+                            <h2>${company}</h2>
+                            <p>${symbol} • ${stockData?.exchange || 'NSE'}</p>
+                        </div>
+                        <div class="stock-price">
+                            <div class="price">₹${stockData?.price?.toFixed(2) || 'N/A'}</div>
+                            <div class="change ${changeClass}">
+                                ${changeSymbol}${stockData?.change?.toFixed(2) || '0.00'} (${changeSymbol}${stockData?.changePercent || '0.00'}%)
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="summary-card">
+                        <h3>📊 AI Summary</h3>
+                        <p>${summary?.overview || 'Analysis in progress...'}</p>
+                        <ul class="key-points">
+                            ${summary?.keyPoints?.map(point => `<li>${point}</li>`).join('') || '<li>Loading key insights...</li>'}
+                        </ul>
+                    </div>
+
+                    <div class="data-grid">
+                        <div class="data-card">
+                            <h3>📈 Market Data</h3>
+                            <div class="data-item">
+                                <span class="data-label">Day High:</span>
+                                <span class="data-value">₹${stockData?.dayHigh?.toFixed(2) || 'N/A'}</span>
+                            </div>
+                            <div class="data-item">
+                                <span class="data-label">Day Low:</span>
+                                <span class="data-value">₹${stockData?.dayLow?.toFixed(2) || 'N/A'}</span>
+                            </div>
+                            <div class="data-item">
+                                <span class="data-label">Volume:</span>
+                                <span class="data-value">${this.formatNumber(stockData?.volume || 0)}</span>
+                            </div>
+                            <div class="data-item">
+                                <span class="data-label">Market Cap:</span>
+                                <span class="data-value">${this.formatNumber(stockData?.marketCap || 0)}</span>
+                            </div>
+                        </div>
+
+                        <div class="data-card">
+                            <h3>📰 Latest News</h3>
+                            ${news?.length > 0 ? 
+                                news.slice(0, 3).map(item => `
+                                    <div class="news-item">
+                                        <div class="news-title">${item.title}</div>
+                                        <div class="news-meta">${item.source} • ${new Date(item.publishedAt).toLocaleDateString()}</div>
+                                        ${item.summary ? `<div class="news-summary">${item.summary.substring(0, 100)}...</div>` : ''}
+                                    </div>
+                                `).join('') : 
+                                '<p>No recent news available</p>'
+                            }
+                        </div>
+                    </div>
+                `;
+
+                this.results.style.display = 'block';
+            }
+
+            showError(message) {
+                this.results.innerHTML = `<div class="error">❌ ${message}</div>`;
+                this.results.style.display = 'block';
+            }
+
+            formatNumber(num) {
+                if (!num) return '0';
+                
+                if (num >= 1e12) return (num / 1e12).toFixed(1) + 'T';
+                if (num >= 1e9) return (num / 1e9).toFixed(1) + 'B';
+                if (num >= 1e6) return (num / 1e6).toFixed(1) + 'M';
+                if (num >= 1e3) return (num / 1e3).toFixed(1) + 'K';
+                
+                return num.toLocaleString();
+            }
+        }
+
+        // Initialize the app
+        const stockResearch = new StockResearch();
+    </script>
+</body>
+</html>

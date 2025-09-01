@@ -11,6 +11,9 @@ export function dataRoutes(dataController: DataController): Router {
 
   // GET /api/data/nifty - Current NIFTY option chain data
   router.get('/nifty', dataController.getNiftyData);
+  
+  // Alias for backward compatibility
+  router.get('/nifty-data', dataController.getNiftyData);
 
   // POST /api/data/fetch - Manual data fetch trigger
   router.post('/fetch', dataController.fetchData);
