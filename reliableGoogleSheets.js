@@ -130,7 +130,7 @@ class ReliableGoogleSheetsStorage {
         }
     }
 
-    async saveNiftyData(optionChainData) {
+    async saveNiftyData(optionChainData, breakoutSignals = null, enhancedBreakoutSignals = null, advancedAnalytics = null) {
         if (!this.sheetId || !this.serviceAccountEmail || !this.privateKey) {
             throw new Error('Google Sheets not configured');
         }
@@ -162,7 +162,50 @@ class ReliableGoogleSheetsStorage {
             const pcrVolume = (atmCall.volume && atmCall.volume > 0) ? (atmPut.volume / atmCall.volume) : 0;
             const pcrOI = totalCallOI > 0 ? (totalPutOI / totalCallOI) : 0;
 
-            // Create row data matching Excel format exactly - using correct field names
+            // Process breakout signals
+            let originalSignalData = ['', '', '', ''];  // [signalType, direction, strength, confidence]
+            if (breakoutSignals && breakoutSignals.signalCount > 0) {
+                originalSignalData = [
+                    breakoutSignals.primarySignalType || '',
+                    breakoutSignals.signalDirection || '',
+                    breakoutSignals.signalStrength || 0,
+                    breakoutSignals.signalCount || 0
+                ];
+            }
+
+            // Process enhanced breakout signals
+            let enhancedSignalData = ['', '', '', '', ''];  // [topSignalType, direction, avgConfidence, signalCount, highConfidenceCount]
+            if (enhancedBreakoutSignals && enhancedBreakoutSignals.length > 0) {
+                const highConfidenceSignals = enhancedBreakoutSignals.filter(s => s.confidence >= 0.8);
+                const avgConfidence = enhancedBreakoutSignals.reduce((sum, s) => sum + s.confidence, 0) / enhancedBreakoutSignals.length;
+                const topSignal = enhancedBreakoutSignals.sort((a, b) => b.confidence - a.confidence)[0];
+                
+                enhancedSignalData = [
+                    topSignal.type || '',
+                    topSignal.direction || '',
+                    Math.round(avgConfidence * 100) / 100,
+                    enhancedBreakoutSignals.length,
+                    highConfidenceSignals.length
+                ];
+            }
+
+            // Process advanced analytics
+            let analyticsData = ['', '', '', '', '', '', '', '', ''];  // [ivSkew, skewVelocity, totalGEX, zeroGamma, maxPain, oiClusters, clusterBreak, patternType, patternConfidence]
+            if (advancedAnalytics) {
+                analyticsData = [
+                    advancedAnalytics.ivSkew?.overallSkew?.toFixed(2) || '',
+                    advancedAnalytics.ivSkew?.skewVelocity?.toFixed(2) || '',
+                    advancedAnalytics.gex?.totalGEX?.toFixed(0) || '',
+                    advancedAnalytics.gex?.zeroGammaLevel?.toFixed(0) || '',
+                    advancedAnalytics.gex?.maxPainLevel?.toFixed(0) || '',
+                    advancedAnalytics.oiClusters?.clusters?.length || 0,
+                    advancedAnalytics.oiClusters?.clusterBreakAlert ? 'YES' : 'NO',
+                    advancedAnalytics.patterns?.patternType || '',
+                    advancedAnalytics.patterns?.confidence?.toFixed(2) || ''
+                ];
+            }
+
+            // Create row data with enhanced signals and advanced analytics - extending the existing format
             const rowData = [
                 istTimestamp.toISOString(),
                 istTimestamp.toDateString(),
@@ -183,10 +226,19 @@ class ReliableGoogleSheetsStorage {
                 pcrVolume,                 // PCR Volume
                 pcrOI,                     // PCR OI
                 totalCallOI,               // Total Call OI
-                totalPutOI                 // Total Put OI
+                totalPutOI,                // Total Put OI
+                // Original breakout signals
+                ...originalSignalData,     // [signalType, direction, strength, confidence]
+                // Enhanced breakout signals  
+                ...enhancedSignalData,     // [topSignalType, direction, avgConfidence, signalCount, highConfidenceCount]
+                // Advanced analytics
+                ...analyticsData           // [ivSkew, skewVelocity, totalGEX, zeroGamma, maxPain, oiClusters, clusterBreak, patternType, patternConfidence]
             ];
 
-            console.log('💾 Saving to Google Sheets - Call OI:', atmCall.oi, 'Put OI:', atmPut.oi, 'Call Vol:', atmCall.volume, 'Put Vol:', atmPut.volume);
+            console.log('💾 Saving to Google Sheets with advanced analytics');
+            console.log('📊 Original signals:', originalSignalData);
+            console.log('🎯 Enhanced signals:', enhancedSignalData);
+            console.log('🔬 Advanced analytics:', analyticsData);
 
             // Try different sheet names - start with Sheet1 (default)
             const sheetNames = ['NIFTY_Historical_Data_v1'];
