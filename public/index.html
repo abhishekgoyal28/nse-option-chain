@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; script-src-attr 'unsafe-hashes' 'sha256-Ne0K7qk75OSYPwrP+3rwIjX18EdIhfsAzlryFid0rfo=' 'sha256-AGScRYqn6GhA2KFHG//HJ08bULMerlI6Ob5W3x/Z1xA=' 'sha256-P1MsgUmL6SZQlkOYJuanyuTQQHqA2uVOzleT4JX+Z4U=';">
     <title>Nifty Option Chain Tracker - Live with Historical Charts</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background: #f8fafc; }
@@ -18,12 +19,7 @@
         .btn-info { background: #06b6d4; color: white; }
         .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
         
-        .auth-section { background: #f0f9ff; border: 1px solid #0284c7; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
-        .auth-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; align-items: end; }
-        .form-group { display: flex; flex-direction: column; }
-        .form-group label { font-weight: 600; margin-bottom: 6px; color: #374151; }
-        .form-group input { padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; }
-        .form-group input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+
         
         .status-bar { display: flex; justify-content: space-between; align-items: center; background: #f9fafb; padding: 16px; border-radius: 8px; margin-bottom: 20px; }
         .status-indicator { display: flex; align-items: center; gap: 8px; }
@@ -48,58 +44,6 @@
             position: relative; 
             height: 300px; 
             margin-top: 10px;
-        }
-        
-        /* Strike Price Tabs Styles */
-        .strike-tabs-container {
-            margin: 20px 0;
-        }
-        
-        .strike-tabs {
-            display: flex;
-            background: #f3f4f6;
-            border-radius: 8px;
-            padding: 4px;
-            gap: 2px;
-            overflow-x: auto;
-        }
-        
-        .strike-tab {
-            flex: 1;
-            min-width: 80px;
-            padding: 12px 16px;
-            background: transparent;
-            border: none;
-            border-radius: 6px;
-            font-weight: 500;
-            font-size: 14px;
-            color: #6b7280;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            white-space: nowrap;
-        }
-        
-        .strike-tab:hover {
-            background: #e5e7eb;
-            color: #374151;
-        }
-        
-        .strike-tab.active {
-            background: #2563eb;
-            color: white;
-            box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
-        }
-        
-        .strike-content-container {
-            position: relative;
-        }
-        
-        .strike-content {
-            display: none;
-        }
-        
-        .strike-content.active {
-            display: block;
         }
         .chart-header {
             display: flex;
@@ -152,16 +96,6 @@
         .tracking-active { background: #dcfce7; color: #166534; }
         .tracking-inactive { background: #fee2e2; color: #991b1b; }
         
-        #nextUpdate {
-            color: #3b82f6;
-            font-weight: 600;
-            font-family: 'Courier New', monospace;
-        }
-        #nextUpdate.urgent {
-            color: #f59e0b;
-            animation: pulse 1s infinite;
-        }
-        
         .indicators-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; margin-bottom: 24px; }
         .indicator { padding: 16px; border-radius: 8px; border: 2px solid; transition: all 0.3s; background: white; }
         .indicator-bullish { border-color: #10b981; background: linear-gradient(135deg, #ecfdf5, #f0fdf4); }
@@ -196,25 +130,9 @@
         .condition-details { font-size: 12px; color: #6b7280; margin-bottom: 8px; }
         .condition-value { font-family: 'Courier New', monospace; font-size: 13px; font-weight: 600; }
         
-        .signal-alert { border-radius: 12px; padding: 24px; margin-bottom: 24px; }
-        .signal-alert h2 { margin: 0 0 12px 0; font-size: 20px; }
-        .signal-alert p { margin: 8px 0; font-weight: 500; }
-        
-        /* Bullish Signal Styling */
-        #bullishSignalAlert { 
-            background: linear-gradient(135deg, #dcfce7, #bbf7d0); 
-            border: 2px solid #10b981; 
-        }
-        #bullishSignalAlert h2 { color: #065f46; }
-        #bullishSignalAlert p { color: #065f46; }
-        
-        /* Bearish Signal Styling */
-        #bearishSignalAlert { 
-            background: linear-gradient(135deg, #fee2e2, #fecaca); 
-            border: 2px solid #ef4444; 
-        }
-        #bearishSignalAlert h2 { color: #991b1b; }
-        #bearishSignalAlert p { color: #991b1b; }
+        .signal-alert { background: linear-gradient(135deg, #fef3c7, #fed7aa); border: 2px solid #f59e0b; border-radius: 12px; padding: 24px; margin-bottom: 24px; }
+        .signal-alert h2 { color: #92400e; margin: 0 0 12px 0; font-size: 20px; }
+        .signal-alert p { color: #92400e; margin: 8px 0; font-weight: 500; }
 
         .historical-summary {
             background: #f0f9ff;
@@ -250,30 +168,39 @@
 </head>
 <body>
     <div class="container">
-        <!-- Authentication Section -->
-        <div class="auth-section">
-            <h2 style="margin: 0 0 16px 0; color: #1f2937;">Zerodha Kite Connect API Configuration</h2>
-            <div class="auth-form">
-                <div class="form-group">
-                    <label for="apiKey">API Key</label>
-                    <input type="text" id="apiKey" placeholder="Your Kite Connect API Key">
+
+        <!-- Kite Connect API Configuration -->
+        <div class="card" style="margin-bottom: 24px; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white;">
+            <h3 style="margin: 0 0 16px 0; color: white;">🔑 Zerodha Kite Connect API Configuration</h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                <div>
+                    <label style="display: block; margin-bottom: 4px; font-weight: 500;">API Key:</label>
+                    <input type="text" id="apiKey" placeholder="Enter your Kite API Key" style="width: 100%; padding: 8px; border: none; border-radius: 4px; font-size: 14px;">
                 </div>
-                <div class="form-group">
-                    <label for="apiSecret">API Secret</label>
-                    <input type="password" id="apiSecret" placeholder="Your API Secret">
+                <div>
+                    <label style="display: block; margin-bottom: 4px; font-weight: 500;">API Secret:</label>
+                    <input type="password" id="apiSecret" placeholder="Enter your Kite API Secret" style="width: 100%; padding: 8px; border: none; border-radius: 4px; font-size: 14px;">
                 </div>
-                <div class="form-group">
-                    <label>&nbsp;</label>
-                    <button id="loginUrlBtn" class="btn btn-primary">Get Login URL</button>
-                </div>
-                <div class="form-group">
-                    <label for="requestToken">Request Token (from URL after login)</label>
-                    <input type="text" id="requestToken" placeholder="Request token from redirect URL">
-                </div>
-                <div class="form-group">
-                    <label>&nbsp;</label>
-                    <button id="generateTokenBtn" class="btn btn-success">Generate Access Token</button>
-                </div>
+            </div>
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 4px; font-weight: 500;">Request Token (from URL after login):</label>
+                <input type="text" id="requestToken" placeholder="Paste request_token from callback URL" style="width: 100%; padding: 8px; border: none; border-radius: 4px; font-size: 14px;">
+            </div>
+            <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 12px;">
+                <button id="authenticateBtn" class="btn" style="background: white; color: #d97706; border: none; font-weight: 600;">
+                    🔐 Login with Kite
+                </button>
+                <button id="generateTokenBtn" class="btn" style="background: #22c55e; color: white; border: none; font-weight: 600;">
+                    🎫 Generate Access Token
+                </button>
+                <span id="authStatus" style="font-size: 14px; opacity: 0.9;">Not authenticated</span>
+            </div>
+            <div style="font-size: 13px; opacity: 0.8;">
+                💡 <strong>Steps:</strong><br>
+                1. Enter API Key & Secret → Click "Login with Kite"<br>
+                2. After login, copy request_token from URL → Paste above<br>
+                3. Click "Generate Access Token" to complete authentication<br>
+                📋 Get credentials from <a href="https://kite.trade" target="_blank" style="color: white; text-decoration: underline;">Kite Connect Developer Console</a>
             </div>
         </div>
 
@@ -286,7 +213,6 @@
             </div>
             <div style="display: flex; gap: 16px; align-items: center;">
                 <span id="lastUpdate">Last Update: --:--:--</span>
-                <span id="nextUpdate" class="hidden">Next Update: --s</span>
                 <span id="userInfo">User: Not logged in</span>
             </div>
         </div>
@@ -367,7 +293,7 @@
                 </div>
             </div>
 
-            <!-- Market Data Grid -->
+        <!-- Market Data Grid -->
             <div class="grid">
                 <div class="card">
                     <h3>🎯 Market Overview</h3>
@@ -438,29 +364,6 @@
                     <div class="metric">
                         <span>IV:</span>
                         <span class="metric-value" id="putIV">--</span>
-                    </div>
-                </div>
-
-                <!-- Multi-Strike Option Chain -->
-                <div class="card" style="grid-column: span 2;">
-                    <h3>📊 Multi-Strike Option Chain (ATM ±3)</h3>
-                    <div class="multi-strike-container" style="overflow-x: auto;">
-                        <table class="multi-strike-table" style="width: 100%; min-width: 800px; border-collapse: collapse; font-size: 12px;">
-                            <thead>
-                                <tr style="background: #f3f4f6;">
-                                    <th style="padding: 8px; border: 1px solid #e5e7eb;">Strike</th>
-                                    <th style="padding: 8px; border: 1px solid #e5e7eb; color: #059669;">Call OI</th>
-                                    <th style="padding: 8px; border: 1px solid #e5e7eb; color: #059669;">Call Vol</th>
-                                    <th style="padding: 8px; border: 1px solid #e5e7eb; color: #059669;">Call LTP</th>
-                                    <th style="padding: 8px; border: 1px solid #e5e7eb; color: #dc2626;">Put LTP</th>
-                                    <th style="padding: 8px; border: 1px solid #e5e7eb; color: #dc2626;">Put Vol</th>
-                                    <th style="padding: 8px; border: 1px solid #e5e7eb; color: #dc2626;">Put OI</th>
-                                </tr>
-                            </thead>
-                            <tbody id="multiStrikeTableBody">
-                                <!-- Will be populated by JavaScript -->
-                            </tbody>
-                        </table>
                     </div>
                 </div>
 
@@ -549,176 +452,32 @@
             </div>
         </div>
 
-        <!-- Multi-Strike Charts Section -->
-        <h2 style="margin: 24px 0 16px 0; color: #1f2937;">📊 Multi-Strike Analysis (ATM ±3)</h2>
+        <!-- Individual Strike Analysis Section -->
+        <h2 style="margin: 24px 0 16px 0; color: #1f2937;">📊 Individual Strike Analysis</h2>
         
-        <!-- Strike Price Tabs -->
-        <div class="strike-tabs-container">
-            <div class="strike-tabs">
-                <button class="strike-tab active" data-strike="atm-3">ATM-3</button>
-                <button class="strike-tab" data-strike="atm-2">ATM-2</button>
-                <button class="strike-tab" data-strike="atm-1">ATM-1</button>
-                <button class="strike-tab" data-strike="atm">ATM</button>
-                <button class="strike-tab" data-strike="atm+1">ATM+1</button>
-                <button class="strike-tab" data-strike="atm+2">ATM+2</button>
-                <button class="strike-tab" data-strike="atm+3">ATM+3</button>
+        <!-- Strike Selection Tabs -->
+        <div class="strike-tabs-container" style="margin-bottom: 20px;">
+            <div class="strike-tabs" style="display: flex; background: #f8f9fa; border-radius: 8px; padding: 4px; overflow-x: auto; gap: 2px;">
+                <button class="strike-tab active" data-strike="atm-3" style="flex: 1; min-width: 100px; padding: 8px 12px; border: none; background: #ef4444; color: white; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 500;">ATM-3</button>
+                <button class="strike-tab" data-strike="atm-2" style="flex: 1; min-width: 100px; padding: 8px 12px; border: none; background: #f97316; color: white; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 500;">ATM-2</button>
+                <button class="strike-tab" data-strike="atm-1" style="flex: 1; min-width: 100px; padding: 8px 12px; border: none; background: #eab308; color: white; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 500;">ATM-1</button>
+                <button class="strike-tab" data-strike="atm" style="flex: 1; min-width: 100px; padding: 8px 12px; border: none; background: #22c55e; color: white; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600;">ATM ⭐</button>
+                <button class="strike-tab" data-strike="atm+1" style="flex: 1; min-width: 100px; padding: 8px 12px; border: none; background: #06b6d4; color: white; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 500;">ATM+1</button>
+                <button class="strike-tab" data-strike="atm+2" style="flex: 1; min-width: 100px; padding: 8px 12px; border: none; background: #3b82f6; color: white; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 500;">ATM+2</button>
+                <button class="strike-tab" data-strike="atm+3" style="flex: 1; min-width: 100px; padding: 8px 12px; border: none; background: #8b5cf6; color: white; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 500;">ATM+3</button>
             </div>
         </div>
 
-        <!-- Strike Price Chart Containers -->
-        <div class="strike-content-container">
-            <!-- ATM-3 Charts -->
-            <div class="strike-content active" id="content-atm-3">
-                <div class="grid-charts">
-                    <div class="card">
-                        <div class="chart-header">
-                            <h3>📈 ATM-3 Call LTP & Volume</h3>
-                        </div>
-                        <div class="chart-container">
-                            <canvas id="strikeChart-atm-3-call" width="500" height="300"></canvas>
-                        </div>
-                    </div>
-                    <div class="card">
-                        <div class="chart-header">
-                            <h3>📉 ATM-3 Put LTP & Volume</h3>
-                        </div>
-                        <div class="chart-container">
-                            <canvas id="strikeChart-atm-3-put" width="500" height="300"></canvas>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ATM-2 Charts -->
-            <div class="strike-content" id="content-atm-2">
-                <div class="grid-charts">
-                    <div class="card">
-                        <div class="chart-header">
-                            <h3>📈 ATM-2 Call LTP & Volume</h3>
-                        </div>
-                        <div class="chart-container">
-                            <canvas id="strikeChart-atm-2-call" width="500" height="300"></canvas>
-                        </div>
-                    </div>
-                    <div class="card">
-                        <div class="chart-header">
-                            <h3>📉 ATM-2 Put LTP & Volume</h3>
-                        </div>
-                        <div class="chart-container">
-                            <canvas id="strikeChart-atm-2-put" width="500" height="300"></canvas>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ATM-1 Charts -->
-            <div class="strike-content" id="content-atm-1">
-                <div class="grid-charts">
-                    <div class="card">
-                        <div class="chart-header">
-                            <h3>📈 ATM-1 Call LTP & Volume</h3>
-                        </div>
-                        <div class="chart-container">
-                            <canvas id="strikeChart-atm-1-call" width="500" height="300"></canvas>
-                        </div>
-                    </div>
-                    <div class="card">
-                        <div class="chart-header">
-                            <h3>📉 ATM-1 Put LTP & Volume</h3>
-                        </div>
-                        <div class="chart-container">
-                            <canvas id="strikeChart-atm-1-put" width="500" height="300"></canvas>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ATM Charts -->
-            <div class="strike-content" id="content-atm">
-                <div class="grid-charts">
-                    <div class="card">
-                        <div class="chart-header">
-                            <h3>📈 ATM Call LTP & Volume</h3>
-                        </div>
-                        <div class="chart-container">
-                            <canvas id="strikeChart-atm-call" width="500" height="300"></canvas>
-                        </div>
-                    </div>
-                    <div class="card">
-                        <div class="chart-header">
-                            <h3>📉 ATM Put LTP & Volume</h3>
-                        </div>
-                        <div class="chart-container">
-                            <canvas id="strikeChart-atm-put" width="500" height="300"></canvas>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ATM+1 Charts -->
-            <div class="strike-content" id="content-atm+1">
-                <div class="grid-charts">
-                    <div class="card">
-                        <div class="chart-header">
-                            <h3>📈 ATM+1 Call LTP & Volume</h3>
-                        </div>
-                        <div class="chart-container">
-                            <canvas id="strikeChart-atm+1-call" width="500" height="300"></canvas>
-                        </div>
-                    </div>
-                    <div class="card">
-                        <div class="chart-header">
-                            <h3>📉 ATM+1 Put LTP & Volume</h3>
-                        </div>
-                        <div class="chart-container">
-                            <canvas id="strikeChart-atm+1-put" width="500" height="300"></canvas>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ATM+2 Charts -->
-            <div class="strike-content" id="content-atm+2">
-                <div class="grid-charts">
-                    <div class="card">
-                        <div class="chart-header">
-                            <h3>📈 ATM+2 Call LTP & Volume</h3>
-                        </div>
-                        <div class="chart-container">
-                            <canvas id="strikeChart-atm+2-call" width="500" height="300"></canvas>
-                        </div>
-                    </div>
-                    <div class="card">
-                        <div class="chart-header">
-                            <h3>📉 ATM+2 Put LTP & Volume</h3>
-                        </div>
-                        <div class="chart-container">
-                            <canvas id="strikeChart-atm+2-put" width="500" height="300"></canvas>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ATM+3 Charts -->
-            <div class="strike-content" id="content-atm+3">
-                <div class="grid-charts">
-                    <div class="card">
-                        <div class="chart-header">
-                            <h3>📈 ATM+3 Call LTP & Volume</h3>
-                        </div>
-                        <div class="chart-container">
-                            <canvas id="strikeChart-atm+3-call" width="500" height="300"></canvas>
-                        </div>
-                    </div>
-                    <div class="card">
-                        <div class="chart-header">
-                            <h3>📉 ATM+3 Put LTP & Volume</h3>
-                        </div>
-                        <div class="chart-container">
-                            <canvas id="strikeChart-atm+3-put" width="500" height="300"></canvas>
-                        </div>
-                    </div>
-                </div>
+        <!-- Strike Info Display -->
+        <div id="strikeInfo" class="card" style="margin-bottom: 20px; padding: 16px; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white;">
+            <h3 style="margin: 0 0 8px 0; font-size: 18px;">ATM-3 Strike Analysis</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; font-size: 14px;">
+                <div><strong>Call LTP:</strong> <span id="callLTP">--</span></div>
+                <div><strong>Put LTP:</strong> <span id="putLTP">--</span></div>
+                <div><strong>Call Volume:</strong> <span id="callVolume">--</span></div>
+                <div><strong>Put Volume:</strong> <span id="putVolume">--</span></div>
+                <div><strong>Call OI:</strong> <span id="callOI">--</span></div>
+                <div><strong>Put OI:</strong> <span id="putOI">--</span></div>
             </div>
         </div>
 
@@ -734,20 +493,12 @@
             <!-- Conditions will be populated by JavaScript -->
         </div>
 
-        <!-- Bullish Signal Alert -->
-        <div class="signal-alert hidden" id="bullishSignalAlert" style="border-left: 4px solid #10b981;">
-            <h2>🚀 BULLISH BIAS SIGNAL DETECTED</h2>
-            <p><strong>Bullish Bias – Upward move expected</strong></p>
-            <p>All conditions satisfied at <span id="bullishSignalTimestamp">--:--:--</span></p>
-            <p>Confidence Level: <span id="bullishSignalConfidence">HIGH</span> | Spot Price: <span id="bullishSignalSpot">--</span></p>
-        </div>
-
-        <!-- Bearish Signal Alert -->
-        <div class="signal-alert hidden" id="bearishSignalAlert" style="border-left: 4px solid #ef4444;">
+        <!-- Signal Alert -->
+        <div class="signal-alert hidden" id="signalAlert">
             <h2>🚨 BEARISH BIAS SIGNAL DETECTED</h2>
             <p><strong>Bearish Bias – Downward move expected</strong></p>
-            <p>All conditions satisfied at <span id="bearishSignalTimestamp">--:--:--</span></p>
-            <p>Confidence Level: <span id="bearishSignalConfidence">HIGH</span> | Spot Price: <span id="bearishSignalSpot">--</span></p>
+            <p>All conditions satisfied at <span id="signalTimestamp">--:--:--</span></p>
+            <p>Confidence Level: <span id="signalConfidence">HIGH</span> | Spot Price: <span id="signalSpot">--</span></p>
         </div>
 
         <!-- Activity Logs -->
@@ -775,9 +526,8 @@
                 }
 
                 const script = document.createElement('script');
-                // Use CloudFlare CDN which is allowed by CSP
-                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.min.js';
-                script.integrity = 'sha512-7U4rRB8aGAHGVad3u2jiC7GA5/1YhQcQjxKeaVms/bT66i3LVBMRcBI9KwABNWnxOSwulkuSXxZLGuyfvo7V1A==';
+                // Use CloudFlare CDN with UMD version
+                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.js';
                 script.crossOrigin = 'anonymous';
                 script.onload = () => {
                     // Wait a bit more for Chart to be fully available
@@ -801,9 +551,6 @@
         let isAuthenticated = false;
         let isTracking = false;
         let trackingInterval = null;
-        let countdownInterval = null;
-        let nextUpdateTime = null;
-        const UPDATE_INTERVAL = 30000; // 30 seconds
         let accessToken = null;
         let currentData = null;
         let historicalData = null;
@@ -816,17 +563,6 @@
         let volumeChart = null;
         let oiChart = null;
         let pcrChart = null;
-        
-        // Multi-Strike Chart Variables (Tabbed Interface)
-        let strikeCharts = {
-            'atm-3': { call: null, put: null },
-            'atm-2': { call: null, put: null },
-            'atm-1': { call: null, put: null },
-            'atm': { call: null, put: null },
-            'atm+1': { call: null, put: null },
-            'atm+2': { call: null, put: null },
-            'atm+3': { call: null, put: null }
-        };
 
         // Utility Functions
         function formatNumber(num) {
@@ -839,45 +575,6 @@
 
         function formatTime(date = new Date()) {
             return date.toLocaleTimeString();
-        }
-
-        // Countdown Timer Functions
-        function startCountdown() {
-            if (!isTracking) return;
-            
-            nextUpdateTime = Date.now() + UPDATE_INTERVAL;
-            const nextUpdateEl = document.getElementById('nextUpdate');
-            nextUpdateEl.classList.remove('hidden');
-            
-            countdownInterval = setInterval(() => {
-                const remaining = Math.max(0, Math.ceil((nextUpdateTime - Date.now()) / 1000));
-                
-                if (remaining <= 0) {
-                    nextUpdateEl.textContent = 'Updating...';
-                    nextUpdateEl.classList.add('urgent');
-                } else {
-                    nextUpdateEl.textContent = `Next Update: ${remaining}s`;
-                    nextUpdateEl.classList.toggle('urgent', remaining <= 5);
-                }
-            }, 1000);
-        }
-
-        function stopCountdown() {
-            if (countdownInterval) {
-                clearInterval(countdownInterval);
-                countdownInterval = null;
-            }
-            
-            const nextUpdateEl = document.getElementById('nextUpdate');
-            nextUpdateEl.classList.add('hidden');
-            nextUpdateEl.classList.remove('urgent');
-        }
-
-        function resetCountdown() {
-            if (isTracking) {
-                stopCountdown();
-                startCountdown();
-            }
         }
 
         function formatDate(dateStr) {
@@ -970,29 +667,11 @@
                 createPCRChart();
                 addLog('✅ PCR chart created', 'success');
 
-                // Create Multi-Strike Charts
-                createStrikeCharts();
-                addLog('✅ Multi-Strike charts created', 'success');
-
                 chartsReady = true;
                 document.getElementById('chartStatus').textContent = 'Ready';
                 document.getElementById('chartStatus').className = 'metric-value positive';
                 
-                // DEBUG: Check if all charts were created successfully
-                console.log('🔍 DEBUG: Chart creation status:', {
-                    spotChart: !!spotChart,
-                    callChart: !!callChart,
-                    putChart: !!putChart,
-                    volumeChart: !!volumeChart,
-                    oiChart: !!oiChart,
-                    pcrChart: !!pcrChart,
-                    multiStrikeCallChart: !!multiStrikeCallChart,
-                    multiStrikePutChart: !!multiStrikePutChart,
-                    multiStrikeCallVolumeChart: !!multiStrikeCallVolumeChart,
-                    multiStrikePutVolumeChart: !!multiStrikePutVolumeChart
-                });
-                
-                addLog('✅ All 10 charts initialized successfully', 'success');
+                addLog('✅ All 6 charts initialized successfully', 'success');
 
                 // Load historical data if available
                 if (historicalData) {
@@ -1016,14 +695,11 @@
                     createVolumeChart();
                     createOIChart();
                     createPCRChart();
-                    
-                    // Create Multi-Strike Charts
-                    createStrikeCharts();
 
                     chartsReady = true;
                     document.getElementById('chartStatus').textContent = 'Ready (v3.9)';
                     document.getElementById('chartStatus').className = 'metric-value positive';
-                    addLog('✅ All 10 charts created with Chart.js v3.9', 'success');
+                    addLog('✅ All charts created with Chart.js v3.9', 'success');
                     
                 } catch (altError) {
                     document.getElementById('chartStatus').textContent = 'Failed';
@@ -1044,10 +720,8 @@
                 }
 
                 const script = document.createElement('script');
-                // Try different version from same CDN
+                // Try Chart.js 3.x as fallback (UMD version)
                 script.src = 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js';
-                script.integrity = 'sha512-ElRFoEQdI5Ht6kZvyzXhYG9NqjtkmlkfYk0wr6wHxU9JEHakS7UJZNeml5ALk+8IKlU6jDgMabC3vkumRokgJA==';
-                script.crossOrigin = 'anonymous';
                 script.onload = () => {
                     setTimeout(() => {
                         if (typeof Chart !== 'undefined') {
@@ -1455,174 +1129,6 @@
             console.log('PCR chart created successfully');
         }
 
-        // Multi-Strike Chart Creation Functions (Tabbed Interface)
-        function createStrikeCharts() {
-            const strikes = ['atm-3', 'atm-2', 'atm-1', 'atm', 'atm+1', 'atm+2', 'atm+3'];
-            
-            strikes.forEach(strike => {
-                createStrikeChart(strike, 'call');
-                createStrikeChart(strike, 'put');
-            });
-        }
-
-        function createStrikeChart(strike, type) {
-            const canvasId = `strikeChart-${strike}-${type}`;
-            const canvas = document.getElementById(canvasId);
-            if (!canvas) {
-                console.warn(`Canvas ${canvasId} not found`);
-                return;
-            }
-            
-            const ctx = canvas.getContext('2d');
-            const isCall = type === 'call';
-            const color = isCall ? '#059669' : '#dc2626';
-            const volumeColor = isCall ? '#10b981' : '#ef4444';
-            
-            strikeCharts[strike][type] = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: `${strike.toUpperCase()} ${type.toUpperCase()} LTP`,
-                        data: [],
-                        borderColor: color,
-                        backgroundColor: color + '20',
-                        borderWidth: 2,
-                        fill: false,
-                        tension: 0.1,
-                        yAxisID: 'y'
-                    }, {
-                        label: `${strike.toUpperCase()} ${type.toUpperCase()} Volume`,
-                        data: [],
-                        borderColor: volumeColor,
-                        backgroundColor: volumeColor + '20',
-                        borderWidth: 1,
-                        fill: true,
-                        tension: 0.1,
-                        yAxisID: 'y1'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    interaction: {
-                        mode: 'index',
-                        intersect: false,
-                    },
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: `${strike.toUpperCase()} ${type.toUpperCase()} LTP & Volume`
-                        },
-                        legend: {
-                            display: true,
-                            position: 'top'
-                        }
-                    },
-                    scales: {
-                        x: {
-                            display: true,
-                            title: {
-                                display: true,
-                                text: 'Time'
-                            }
-                        },
-                        y: {
-                            type: 'linear',
-                            display: true,
-                            position: 'left',
-                            title: {
-                                display: true,
-                                text: 'LTP (₹)'
-                            }
-                        },
-                        y1: {
-                            type: 'linear',
-                            display: true,
-                            position: 'right',
-                            title: {
-                                display: true,
-                                text: 'Volume'
-                            },
-                            grid: {
-                                drawOnChartArea: false,
-                            }
-                        }
-                    }
-                }
-            });
-        }
-
-        // Strike Price Tab Functionality
-        function initializeStrikeTabs() {
-            const tabs = document.querySelectorAll('.strike-tab');
-            const contents = document.querySelectorAll('.strike-content');
-            
-            tabs.forEach(tab => {
-                tab.addEventListener('click', () => {
-                    const targetStrike = tab.dataset.strike;
-                    
-                    // Remove active class from all tabs and contents
-                    tabs.forEach(t => t.classList.remove('active'));
-                    contents.forEach(c => c.classList.remove('active'));
-                    
-                    // Add active class to clicked tab and corresponding content
-                    tab.classList.add('active');
-                    const targetContent = document.getElementById(`content-${targetStrike}`);
-                    if (targetContent) {
-                        targetContent.classList.add('active');
-                    }
-                });
-            });
-        }
-
-        // Update Strike Charts with Historical Data
-        function updateStrikeChartsWithHistoricalData() {
-            if (!chartsReady || !historicalData) {
-                return;
-            }
-
-            try {
-                const timeLabels = historicalData.timestamps ? historicalData.timestamps.map(ts => {
-                    const date = new Date(ts);
-                    return date.toLocaleTimeString('en-IN', { 
-                        hour: '2-digit', 
-                        minute: '2-digit',
-                        timeZone: 'Asia/Kolkata'
-                    });
-                }) : [];
-
-                const strikes = ['atm-3', 'atm-2', 'atm-1', 'atm', 'atm+1', 'atm+2', 'atm+3'];
-                
-                strikes.forEach(strike => {
-                    const strikeKey = strike.replace('-', 'M').replace('+', 'P'); // Convert to data key format
-                    
-                    // Update Call Chart
-                    if (strikeCharts[strike]?.call && historicalData[`${strikeKey}Calls`]) {
-                        const callData = historicalData[`${strikeKey}Calls`];
-                        strikeCharts[strike].call.data.labels = timeLabels;
-                        strikeCharts[strike].call.data.datasets[0].data = callData.ltp || [];
-                        strikeCharts[strike].call.data.datasets[1].data = callData.volume || [];
-                        strikeCharts[strike].call.update();
-                    }
-                    
-                    // Update Put Chart
-                    if (strikeCharts[strike]?.put && historicalData[`${strikeKey}Puts`]) {
-                        const putData = historicalData[`${strikeKey}Puts`];
-                        strikeCharts[strike].put.data.labels = timeLabels;
-                        strikeCharts[strike].put.data.datasets[0].data = putData.ltp || [];
-                        strikeCharts[strike].put.data.datasets[1].data = putData.volume || [];
-                        strikeCharts[strike].put.update();
-                    }
-                });
-
-                addLog('✅ Strike charts updated with historical data', 'success');
-            } catch (error) {
-                console.error('Strike chart update error:', error);
-                addLog(`❌ Strike chart update failed: ${error.message}`, 'error');
-            }
-        }
-
         // Update charts with historical data
         function updateChartsWithHistoricalData() {
             if (!chartsReady || !historicalData) {
@@ -1703,9 +1209,6 @@
                     pcrChart.update();
                 }
 
-                // Update Strike Charts (Tabbed Interface)
-                updateStrikeChartsWithHistoricalData();
-
                 addLog('✅ All charts updated with timestamped historical data', 'success');
 
             } catch (error) {
@@ -1749,28 +1252,13 @@
 
         // Historical Data Functions
         function loadHistoricalDataSummary() {
-            addLog('📊 Loading historical data summary...', 'info');
+            addLog('📊 Historical data summary not available', 'info');
             
-            apiCall('data/historical/summary')
-                .then(response => {
-                    if (response.success && response.data) {
-                        const data = response.data;
-                        
-                        document.getElementById('summaryRecords').textContent = data.records || 0;
-                        document.getElementById('summaryFileSize').textContent = data.file_size || '--';
-                        document.getElementById('summaryOldest').textContent = data.oldest_record ? 
-                            formatDate(data.oldest_record) : '--';
-                        document.getElementById('summaryLatest').textContent = data.latest_record ? 
-                            formatDate(data.latest_record) : '--';
-                        
-                        addLog(`✅ Historical summary loaded: ${data.records} records`, 'success');
-                    } else {
-                        addLog('⚠️ No historical data available yet', 'warning');
-                    }
-                })
-                .catch(error => {
-                    addLog(`❌ Error loading historical summary: ${error.message}`, 'error');
-                });
+            // Set default values since API endpoint doesn't exist
+            document.getElementById('summaryRecords').textContent = '--';
+            document.getElementById('summaryFileSize').textContent = '--';
+            document.getElementById('summaryOldest').textContent = '--';
+            document.getElementById('summaryLatest').textContent = '--';
         }
 
         function loadHistoricalChartData() {
@@ -1781,7 +1269,7 @@
             
             setButtonLoading('loadHistoricalBtn', true);
             
-            let endpoint = 'data/historical';
+            let endpoint = 'historical-data';
             const params = new URLSearchParams();
             
             if (timeframe && timeframe !== 'all') {
@@ -1837,7 +1325,7 @@
             addLog('🗑️ Clearing historical data...', 'warning');
             setButtonLoading('clearHistoricalBtn', true);
             
-            apiCall('data/historical', { method: 'DELETE' })
+            apiCall('historical-data', { method: 'DELETE' })
                 .then(response => {
                     if (response.success) {
                         addLog('✅ Historical data cleared successfully', 'success');
@@ -1851,17 +1339,6 @@
                                     chart.data.datasets.forEach(dataset => dataset.data = []);
                                     chart.update();
                                 }
-                            });
-                            
-                            // Clear strike charts
-                            Object.values(strikeCharts).forEach(strikeGroup => {
-                                Object.values(strikeGroup).forEach(chart => {
-                                    if (chart) {
-                                        chart.data.labels = [];
-                                        chart.data.datasets.forEach(dataset => dataset.data = []);
-                                        chart.update();
-                                    }
-                                });
                             });
                         }
                         
@@ -1891,113 +1368,11 @@
             setButtonLoading('exportHistoricalBtn', false);
         }
 
-        // Authentication Functions
-        function getLoginUrl() {
-            addLog('🔍 Getting login URL...', 'info');
-            
-            const apiKey = document.getElementById('apiKey').value.trim();
-            const apiSecret = document.getElementById('apiSecret').value.trim();
+        // Authentication Functions - Removed (handled server-side)
 
-            if (!apiKey || !apiSecret) {
-                addLog('❌ Please enter API Key and Secret', 'error');
-                alert('Please enter both API Key and Secret');
-                return;
-            }
 
-            setButtonLoading('loginUrlBtn', true);
-            
-            apiCall('auth/login-url')
-                .then(response => {
-                    if (response.success) {
-                        addLog('✅ Login URL generated successfully', 'success');
-                        addLog('🔗 Opening Kite Connect login page...', 'info');
-                        window.open(response.login_url, '_blank');
-                        addLog('📋 After login, copy the request_token from URL and paste above', 'warning');
-                    } else {
-                        throw new Error(response.error);
-                    }
-                })
-                .catch(error => {
-                    addLog(`❌ Error getting login URL: ${error.message}`, 'error');
-                    alert(`Error: ${error.message}`);
-                })
-                .finally(() => {
-                    setButtonLoading('loginUrlBtn', false);
-                });
-        }
 
-        function generateAccessToken() {
-            addLog('🔍 Generating access token...', 'info');
-            
-            const requestToken = document.getElementById('requestToken').value.trim();
 
-            if (!requestToken) {
-                addLog('❌ Please enter request token from redirect URL', 'error');
-                alert('Please enter the request token');
-                return;
-            }
-
-            setButtonLoading('generateTokenBtn', true);
-            updateConnectionStatus('connecting', 'Authenticating...');
-            addLog('🔐 Generating access token...', 'info');
-
-            apiCall('auth/generate-token', {
-                method: 'POST',
-                body: JSON.stringify({ request_token: requestToken })
-            })
-                .then(response => {
-                    if (response.success) {
-                        accessToken = response.access_token;
-                        isAuthenticated = true;
-                        
-                        updateConnectionStatus('connected', 'Connected');
-                        document.getElementById('userInfo').textContent = `User: ${response.user_name}`;
-                        
-                        document.getElementById('trackingBtn').disabled = false;
-                        document.getElementById('refreshBtn').disabled = false;
-                        
-                        addLog(`✅ Successfully authenticated as ${response.user_name}`, 'success');
-                        addLog(`📊 Broker: ${response.broker} | User ID: ${response.user_id}`, 'success');
-                        
-                        setAccessToken()
-                            .then(() => {
-                                return fetchData();
-                            })
-                            .catch(error => {
-                                addLog(`❌ Error in post-auth setup: ${error.message}`, 'error');
-                            });
-                    } else {
-                        throw new Error(response.error);
-                    }
-                })
-                .catch(error => {
-                    isAuthenticated = false;
-                    updateConnectionStatus('disconnected', 'Authentication Failed');
-                    addLog(`❌ Authentication failed: ${error.message}`, 'error');
-                    alert(`Authentication failed: ${error.message}`);
-                })
-                .finally(() => {
-                    setButtonLoading('generateTokenBtn', false);
-                });
-        }
-
-        function setAccessToken() {
-            return apiCall('auth/set-token', {
-                method: 'POST',
-                body: JSON.stringify({ access_token: accessToken })
-            })
-                .then(response => {
-                    if (response.success) {
-                        addLog('✅ Access token set on server', 'success');
-                    } else {
-                        throw new Error(response.error);
-                    }
-                })
-                .catch(error => {
-                    addLog(`❌ Error setting access token: ${error.message}`, 'error');
-                    throw error;
-                });
-        }
 
         // Data Fetching Functions
         function fetchData() {
@@ -2008,14 +1383,7 @@
 
             addLog('📊 Fetching NIFTY option chain data...', 'info');
             
-            // Show loading state
-            const nextUpdateEl = document.getElementById('nextUpdate');
-            if (isTracking) {
-                nextUpdateEl.textContent = 'Updating...';
-                nextUpdateEl.classList.add('urgent');
-            }
-            
-            return apiCall('data/nifty')
+            return apiCall('nifty-data')
                 .then(response => {
                     if (response.success) {
                         currentData = response.data;
@@ -2023,9 +1391,6 @@
                         
                         document.getElementById('lastUpdate').textContent = `Last Update: ${formatTime()}`;
                         addLog('✅ Data updated successfully', 'success');
-                        
-                        // Reset countdown timer after successful update
-                        resetCountdown();
                         
                         // Handle market status and historical data saving
                         if (response.market_status) {
@@ -2105,46 +1470,6 @@
                 document.getElementById('putIV').textContent = 'No Data';
                 document.getElementById('putChange').textContent = 'No Data';
             }
-
-            // Update Multi-Strike Table
-            updateMultiStrikeTable();
-        }
-
-        function updateMultiStrikeTable() {
-            if (!currentData) return;
-
-            const atmStrike = currentData.atm_strike;
-            const strikeInterval = 50;
-            const tableBody = document.getElementById('multiStrikeTableBody');
-            
-            if (!tableBody) return;
-
-            let tableHTML = '';
-
-            // Create rows for ATM-3 to ATM+3
-            for (let i = -3; i <= 3; i++) {
-                const strike = atmStrike + (i * strikeInterval);
-                const callOption = currentData.options[strike]?.CE;
-                const putOption = currentData.options[strike]?.PE;
-                
-                const isATM = i === 0;
-                const rowClass = isATM ? 'style="background: #fef3c7; font-weight: bold;"' : '';
-                const strikeLabel = isATM ? `${strike} (ATM)` : `${strike} (ATM${i > 0 ? '+' : ''}${i})`;
-
-                tableHTML += `
-                    <tr ${rowClass}>
-                        <td style="padding: 6px; border: 1px solid #e5e7eb; text-align: center; font-weight: ${isATM ? 'bold' : 'normal'};">${strikeLabel}</td>
-                        <td style="padding: 6px; border: 1px solid #e5e7eb; text-align: right; color: #059669;">${formatNumber(callOption?.oi || 0)}</td>
-                        <td style="padding: 6px; border: 1px solid #e5e7eb; text-align: right; color: #059669;">${formatNumber(callOption?.volume || 0)}</td>
-                        <td style="padding: 6px; border: 1px solid #e5e7eb; text-align: right; color: #059669; font-weight: bold;">${callOption?.last_price ? callOption.last_price.toFixed(2) : '--'}</td>
-                        <td style="padding: 6px; border: 1px solid #e5e7eb; text-align: right; color: #dc2626; font-weight: bold;">${putOption?.last_price ? putOption.last_price.toFixed(2) : '--'}</td>
-                        <td style="padding: 6px; border: 1px solid #e5e7eb; text-align: right; color: #dc2626;">${formatNumber(putOption?.volume || 0)}</td>
-                        <td style="padding: 6px; border: 1px solid #e5e7eb; text-align: right; color: #dc2626;">${formatNumber(putOption?.oi || 0)}</td>
-                    </tr>
-                `;
-            }
-
-            tableBody.innerHTML = tableHTML;
         }
 
         // Market Indicators Functions
@@ -2285,21 +1610,20 @@
                 return;
             }
 
-            // Bullish Signal Conditions
-            const bullishConditions = {
+            const conditions = {
                 condition1: {
                     title: 'ATM Call Volume > 1M',
-                    description: 'High call volume indicates bullish activity',
+                    description: 'High call volume indicates activity',
                     status: (atmCall.volume || 0) > 1000000,
-                    value: `Call Volume: ${formatNumber(atmCall.volume || 0)}`,
-                    details: 'Large call volume indicates institutional bullish activity'
+                    value: `Volume: ${formatNumber(atmCall.volume || 0)}`,
+                    details: 'Large volume indicates institutional activity'
                 },
                 condition2: {
-                    title: 'Call Volume > Put Volume',
-                    description: 'Call activity higher than put activity',
-                    status: (atmCall.volume || 0) > (atmPut.volume || 0),
+                    title: 'ATM Put Volume < Call Volume',
+                    description: 'Put activity lower than call activity',
+                    status: (atmPut.volume || 0) < (atmCall.volume || 0),
                     value: `Put/Call Ratio: ${((atmPut.volume || 0) / (atmCall.volume || 1)).toFixed(2)}`,
-                    details: 'Higher call volume suggests bullish sentiment'
+                    details: 'Lower put volume suggests bearish sentiment'
                 },
                 condition3: {
                     title: 'Call LTP > Put LTP',
@@ -2310,72 +1634,21 @@
                 }
             };
 
-            // Bearish Signal Conditions
-            const bearishConditions = {
-                condition1: {
-                    title: 'ATM Put Volume > 1M',
-                    description: 'High put volume indicates bearish activity',
-                    status: (atmPut.volume || 0) > 1000000,
-                    value: `Put Volume: ${formatNumber(atmPut.volume || 0)}`,
-                    details: 'Large put volume indicates institutional bearish activity'
-                },
-                condition2: {
-                    title: 'Put Volume > Call Volume',
-                    description: 'Put activity higher than call activity',
-                    status: (atmPut.volume || 0) > (atmCall.volume || 0),
-                    value: `Put/Call Ratio: ${((atmPut.volume || 0) / (atmCall.volume || 1)).toFixed(2)}`,
-                    details: 'Higher put volume suggests bearish sentiment'
-                },
-                condition3: {
-                    title: 'Put LTP > Call LTP',
-                    description: 'Put options more expensive than calls',
-                    status: (atmPut.last_price || 0) > (atmCall.last_price || 0),
-                    value: `Put: ₹${(atmPut.last_price || 0).toFixed(2)} | Call: ₹${(atmCall.last_price || 0).toFixed(2)}`,
-                    details: 'Higher put prices indicate bearish bias'
-                }
-            };
+            updateConditionsDisplay(conditions);
 
-            // Check which signal type to display
-            const bullishAllMet = Object.values(bullishConditions).every(c => c.status === true);
-            const bearishAllMet = Object.values(bearishConditions).every(c => c.status === true);
-
-            if (bullishAllMet) {
-                updateConditionsDisplay(bullishConditions, 'bullish');
-                showBullishSignalAlert();
-                addLog('🚀 BULLISH SIGNAL DETECTED - All bullish conditions satisfied', 'success');
-                hideBearishSignalAlert();
-            } else if (bearishAllMet) {
-                updateConditionsDisplay(bearishConditions, 'bearish');
-                showBearishSignalAlert();
-                addLog('🚨 BEARISH SIGNAL DETECTED - All bearish conditions satisfied', 'warning');
-                hideBullishSignalAlert();
+            const allMet = Object.values(conditions).every(c => c.status === true);
+            
+            if (allMet) {
+                showSignalAlert();
+                addLog('🚨 SIGNAL DETECTED - All conditions satisfied', 'warning');
             } else {
-                // Show the more likely signal conditions (or default to bullish)
-                const bullishMetCount = Object.values(bullishConditions).filter(c => c.status === true).length;
-                const bearishMetCount = Object.values(bearishConditions).filter(c => c.status === true).length;
-                
-                if (bearishMetCount > bullishMetCount) {
-                    updateConditionsDisplay(bearishConditions, 'bearish');
-                } else {
-                    updateConditionsDisplay(bullishConditions, 'bullish');
-                }
-                
-                hideBullishSignalAlert();
-                hideBearishSignalAlert();
+                hideSignalAlert();
             }
         }
 
-        function updateConditionsDisplay(conditions, signalType) {
+        function updateConditionsDisplay(conditions) {
             const conditionsGrid = document.getElementById('conditionsGrid');
             conditionsGrid.innerHTML = '';
-            
-            // Add signal type header
-            const headerDiv = document.createElement('div');
-            headerDiv.style.cssText = 'margin-bottom: 12px; padding: 8px; border-radius: 4px; font-weight: bold; text-align: center;';
-            headerDiv.style.backgroundColor = signalType === 'bullish' ? '#dcfce7' : '#fee2e2';
-            headerDiv.style.color = signalType === 'bullish' ? '#166534' : '#991b1b';
-            headerDiv.textContent = `${signalType.toUpperCase()} SIGNAL CONDITIONS`;
-            conditionsGrid.appendChild(headerDiv);
             
             Object.entries(conditions).forEach(([key, condition]) => {
                 const conditionDiv = document.createElement('div');
@@ -2393,26 +1666,15 @@
             });
         }
 
-        function showBullishSignalAlert() {
-            const bullishAlert = document.getElementById('bullishSignalAlert');
-            bullishAlert.classList.remove('hidden');
-            document.getElementById('bullishSignalTimestamp').textContent = formatTime();
-            document.getElementById('bullishSignalSpot').textContent = currentData.spot_price.toFixed(2);
+        function showSignalAlert() {
+            const signalAlert = document.getElementById('signalAlert');
+            signalAlert.classList.remove('hidden');
+            document.getElementById('signalTimestamp').textContent = formatTime();
+            document.getElementById('signalSpot').textContent = currentData.spot_price.toFixed(2);
         }
 
-        function hideBullishSignalAlert() {
-            document.getElementById('bullishSignalAlert').classList.add('hidden');
-        }
-
-        function showBearishSignalAlert() {
-            const bearishAlert = document.getElementById('bearishSignalAlert');
-            bearishAlert.classList.remove('hidden');
-            document.getElementById('bearishSignalTimestamp').textContent = formatTime();
-            document.getElementById('bearishSignalSpot').textContent = currentData.spot_price.toFixed(2);
-        }
-
-        function hideBearishSignalAlert() {
-            document.getElementById('bearishSignalAlert').classList.add('hidden');
+        function hideSignalAlert() {
+            document.getElementById('signalAlert').classList.add('hidden');
         }
 
         // Tracking Functions
@@ -2448,12 +1710,9 @@
                 fetchData().catch(error => {
                     addLog(`❌ Tracking error: ${error.message}`, 'error');
                 });
-            }, UPDATE_INTERVAL);
+            }, 45000);
             
-            // Start countdown timer
-            startCountdown();
-            
-            addLog('⏰ Tracking started - Updates every 30 seconds', 'info');
+            addLog('⏰ Tracking started - Updates every 45 seconds', 'info');
         }
 
         function stopTracking() {
@@ -2470,9 +1729,6 @@
                 clearInterval(trackingInterval);
                 trackingInterval = null;
             }
-            
-            // Stop countdown timer
-            stopCountdown();
             
             addLog('✅ Tracking stopped', 'success');
         }
@@ -2558,15 +1814,6 @@
                         if (chart && typeof chart.destroy === 'function') {
                             chart.destroy();
                         }
-                    });
-                    
-                    // Destroy strike charts
-                    Object.values(strikeCharts).forEach(strikeGroup => {
-                        Object.values(strikeGroup).forEach(chart => {
-                            if (chart && typeof chart.destroy === 'function') {
-                                chart.destroy();
-                            }
-                        });
                     });
                 } catch (e) {
                     console.log('Error destroying charts:', e);
@@ -2764,9 +2011,6 @@ Check browser console for detailed objects.
             // Initialize charts (async)
             await initializeCharts();
             
-            // Initialize strike price tabs
-            initializeStrikeTabs();
-            
             addLog('📋 Please configure Kite Connect API credentials above', 'info');
             addLog('🕘 Market Hours: 9:30 AM - 3:30 PM IST (Monday to Friday)', 'info');
             addLog('📊 Market Indicators section added for technical analysis', 'info');
@@ -2777,9 +2021,6 @@ Check browser console for detailed objects.
         function handlePageUnload() {
             if (trackingInterval) {
                 clearInterval(trackingInterval);
-            }
-            if (countdownInterval) {
-                clearInterval(countdownInterval);
             }
         }
 
@@ -2829,11 +2070,574 @@ Check browser console for detailed objects.
         console.log('📊 Chart system: Chart.js (reliable and proven)');
         console.log('💾 Backend integration: Full historical data support');
         console.log('📈 Market Indicators: 6 professional technical indicators');
-        console.log('🚨 Breakout Detection: 7 high-probability pattern detection techniques');
         console.log('🔧 Debug functions available: window.debugFunctions');
     </script>
-    
-    <!-- Breakout Signals Module -->
-    <script src="breakout-signals.js"></script>
+
+    <!-- Enhanced NSE Tracker Scripts -->
+    <script src="enhanced-charts.js"></script>
+    <script src="signal-analyzer.js"></script>
+    <script src="enhanced-ui.js"></script>
+    <script src="integration.js"></script>
+
+    <script>
+    // Enhanced initialization that works with your existing code
+    (function() {
+        'use strict';
+        
+        // Wait for your existing app to initialize
+        const originalInitializeApp = window.initializeApp;
+        
+        window.initializeApp = async function() {
+            try {
+                // Call original initialization
+                if (originalInitializeApp) {
+                    await originalInitializeApp();
+                }
+                
+                // Initialize enhanced features after a short delay
+                setTimeout(async () => {
+                    if (window.nseIntegration) {
+                        await window.nseIntegration.initialize();
+                        console.log('🎉 Enhanced features loaded successfully!');
+                    }
+                }, 2000);
+                
+            } catch (error) {
+                console.error('❌ App initialization error:', error);
+            }
+        };
+        
+        // Enhanced chart creation that preserves your existing functionality
+        const originalCreateSpotChart = window.createSpotChart;
+        window.createSpotChart = function() {
+            try {
+                // Call original function
+                if (originalCreateSpotChart) {
+                    originalCreateSpotChart();
+                }
+                
+                // Enhance with new features
+                if (window.chartManager && window.spotChart) {
+                    window.chartManager.charts['spotChart'] = window.spotChart;
+                }
+            } catch (error) {
+                console.error('❌ Enhanced spot chart creation failed:', error);
+                // Fallback to original
+                if (originalCreateSpotChart) {
+                    originalCreateSpotChart();
+                }
+            }
+        };
+        
+        // Similar enhancements for other charts
+        ['Call', 'Put', 'Volume', 'OI', 'PCR'].forEach(chartType => {
+            const originalFunction = window[`create${chartType}Chart`];
+            const chartId = `${chartType.toLowerCase()}Chart`;
+            
+            window[`create${chartType}Chart`] = function() {
+                try {
+                    if (originalFunction) {
+                        originalFunction();
+                    }
+                    
+                    if (window.chartManager && window[chartId]) {
+                        window.chartManager.charts[chartId] = window[chartId];
+                    }
+                } catch (error) {
+                    console.error(`❌ Enhanced ${chartType} chart creation failed:`, error);
+                    if (originalFunction) {
+                        originalFunction();
+                    }
+                }
+            };
+        });
+        
+        // Add enhanced features to existing buttons
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add enhanced functionality to existing buttons
+            const existingButtons = document.querySelectorAll('.btn');
+            existingButtons.forEach(button => {
+                if (!button.classList.contains('enhanced')) {
+                    button.classList.add('enhanced');
+                    
+                    // Add loading state on click
+                    button.addEventListener('click', function() {
+                        if (!this.disabled) {
+                            this.style.opacity = '0.7';
+                            setTimeout(() => {
+                                this.style.opacity = '1';
+                            }, 1000);
+                        }
+                    });
+                }
+            });
+        });
+        
+    })();
+    </script>
+
+    <style>
+    /* Enhanced Features Styles */
+    .enhanced-features {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 10px 20px;
+        border-radius: 8px;
+        margin: 10px 0;
+        text-align: center;
+        font-weight: 600;
+    }
+
+    .feature-badge {
+        display: inline-block;
+        background: rgba(255, 255, 255, 0.2);
+        padding: 4px 8px;
+        border-radius: 4px;
+        margin: 2px;
+        font-size: 12px;
+    }
+
+    /* Enhanced button styles */
+    .btn.enhanced {
+        position: relative;
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+
+    .btn.enhanced:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+
+    .btn.enhanced:active {
+        transform: translateY(0);
+    }
+
+    /* Pulse animation for important alerts */
+    @keyframes pulse-glow {
+        0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
+        70% { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+    }
+
+    .pulse-alert {
+        animation: pulse-glow 2s infinite;
+    }
+
+    /* Improved chart container */
+    .chart-container {
+        position: relative;
+        background: white;
+        border-radius: 8px;
+        padding: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    /* Loading overlay */
+    .loading-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255, 255, 255, 0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        z-index: 10;
+    }
+
+    .loading-spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #3498db;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    /* Responsive improvements */
+    @media (max-width: 768px) {
+        .time-range-buttons {
+            flex-direction: column;
+            gap: 4px;
+        }
+        
+        .btn-time-range {
+            width: 100%;
+        }
+        
+        .signal-summary {
+            grid-template-columns: 1fr;
+            gap: 16px;
+        }
+        
+        .strength-bar {
+            width: 100%;
+        }
+    }
+
+    /* Dark mode support */
+    @media (prefers-color-scheme: dark) {
+        .signal-panel, .alerts-panel {
+            background: #1f2937;
+            color: white;
+        }
+        
+        .recommendation-panel {
+            background: #1e3a8a;
+            border-color: #3b82f6;
+        }
+        
+        .signal-summary {
+            background: #374151;
+        }
+    }
+    </style>
+
+    <!-- Feature announcement banner -->
+    <div class="enhanced-features" id="featureBanner" style="display: none;">
+        🎉 Enhanced Features Loaded! 
+        <span class="feature-badge">Time Range Selection</span>
+        <span class="feature-badge">Advanced Signals</span>
+        <span class="feature-badge">Live Alerts</span>
+        <span class="feature-badge">Improved Charts</span>
+        <button id="closeEnhancementBanner" style="float: right; background: none; border: none; color: white; cursor: pointer;">×</button>
+    </div>
+
+    <script>
+    // Show feature banner after initialization
+    setTimeout(() => {
+        const banner = document.getElementById('featureBanner');
+        if (banner) {
+            banner.style.display = 'block';
+            // Auto-hide after 10 seconds
+            setTimeout(() => {
+                banner.style.display = 'none';
+            }, 10000);
+        }
+    }, 3000);
+
+    // Individual Strike Analysis Functionality
+    function initializeStrikeAnalysis() {
+        const tabs = document.querySelectorAll('.strike-tab');
+        const strikeInfo = document.getElementById('strikeInfo');
+        
+        // Strike data mapping
+        const strikeMapping = {
+            'atm-3': { label: 'ATM-3', color: '#ef4444', dataKey: 'atmM3' },
+            'atm-2': { label: 'ATM-2', color: '#f97316', dataKey: 'atmM2' },
+            'atm-1': { label: 'ATM-1', color: '#eab308', dataKey: 'atmM1' },
+            'atm': { label: 'ATM', color: '#22c55e', dataKey: 'atm' },
+            'atm+1': { label: 'ATM+1', color: '#06b6d4', dataKey: 'atmP1' },
+            'atm+2': { label: 'ATM+2', color: '#3b82f6', dataKey: 'atmP2' },
+            'atm+3': { label: 'ATM+3', color: '#8b5cf6', dataKey: 'atmP3' }
+        };
+
+        // Tab click handlers
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                // Remove active class from all tabs
+                tabs.forEach(t => t.classList.remove('active'));
+                
+                // Add active class to clicked tab
+                tab.classList.add('active');
+                
+                // Update strike info
+                const strikeKey = tab.getAttribute('data-strike');
+                const strikeData = strikeMapping[strikeKey];
+                
+                if (strikeData) {
+                    updateStrikeDisplay(strikeData);
+                }
+            });
+        });
+
+        // Initialize with ATM-3
+        updateStrikeDisplay(strikeMapping['atm-3']);
+    }
+
+    function updateStrikeDisplay(strikeData) {
+        const strikeInfo = document.getElementById('strikeInfo');
+        const title = strikeInfo.querySelector('h3');
+        
+        // Update title and background
+        title.textContent = `${strikeData.label} Strike Analysis`;
+        strikeInfo.style.background = `linear-gradient(135deg, ${strikeData.color} 0%, ${strikeData.color}dd 100%)`;
+        
+        // Update data if available
+        if (window.currentData && window.currentData.optionChain) {
+            updateStrikeData(strikeData);
+        } else {
+            // Show placeholder data
+            document.getElementById('callLTP').textContent = '--';
+            document.getElementById('putLTP').textContent = '--';
+            document.getElementById('callVolume').textContent = '--';
+            document.getElementById('putVolume').textContent = '--';
+            document.getElementById('callOI').textContent = '--';
+            document.getElementById('putOI').textContent = '--';
+        }
+    }
+
+    function updateStrikeData(strikeData) {
+        try {
+            const optionChain = window.currentData.optionChain;
+            let callData = null;
+            let putData = null;
+
+            // Find the appropriate strike data based on the dataKey
+            if (strikeData.dataKey === 'atm' && optionChain.atmStrike) {
+                const atmStrike = optionChain.atmStrike;
+                callData = optionChain.data.find(item => 
+                    item.strikePrice === atmStrike && item.CE
+                )?.CE;
+                putData = optionChain.data.find(item => 
+                    item.strikePrice === atmStrike && item.PE
+                )?.PE;
+            } else {
+                // For other strikes, we'll need to calculate based on ATM
+                const atmStrike = optionChain.atmStrike;
+                let targetStrike = atmStrike;
+                
+                switch(strikeData.dataKey) {
+                    case 'atmM3': targetStrike = atmStrike - 150; break;
+                    case 'atmM2': targetStrike = atmStrike - 100; break;
+                    case 'atmM1': targetStrike = atmStrike - 50; break;
+                    case 'atmP1': targetStrike = atmStrike + 50; break;
+                    case 'atmP2': targetStrike = atmStrike + 100; break;
+                    case 'atmP3': targetStrike = atmStrike + 150; break;
+                }
+                
+                callData = optionChain.data.find(item => 
+                    item.strikePrice === targetStrike && item.CE
+                )?.CE;
+                putData = optionChain.data.find(item => 
+                    item.strikePrice === targetStrike && item.PE
+                )?.PE;
+            }
+
+            // Update display
+            document.getElementById('callLTP').textContent = callData?.lastPrice?.toFixed(2) || '--';
+            document.getElementById('putLTP').textContent = putData?.lastPrice?.toFixed(2) || '--';
+            document.getElementById('callVolume').textContent = formatNumber(callData?.totalTradedVolume) || '--';
+            document.getElementById('putVolume').textContent = formatNumber(putData?.totalTradedVolume) || '--';
+            document.getElementById('callOI').textContent = formatNumber(callData?.openInterest) || '--';
+            document.getElementById('putOI').textContent = formatNumber(putData?.openInterest) || '--';
+            
+        } catch (error) {
+            console.log('Error updating strike data:', error);
+            // Show placeholder data on error
+            document.getElementById('callLTP').textContent = '--';
+            document.getElementById('putLTP').textContent = '--';
+            document.getElementById('callVolume').textContent = '--';
+            document.getElementById('putVolume').textContent = '--';
+            document.getElementById('callOI').textContent = '--';
+            document.getElementById('putOI').textContent = '--';
+        }
+    }
+
+    // Initialize strike analysis when DOM is loaded
+    document.addEventListener('DOMContentLoaded', function() {
+        initializeStrikeAnalysis();
+        
+        // Add close button handler for enhancement banner
+        const closeBtn = document.getElementById('closeEnhancementBanner');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', function() {
+                this.parentElement.style.display = 'none';
+            });
+        }
+
+        // Add authentication handler
+        const authenticateBtn = document.getElementById('authenticateBtn');
+        if (authenticateBtn) {
+            authenticateBtn.addEventListener('click', function() {
+                const apiKey = document.getElementById('apiKey').value.trim();
+                
+                if (!apiKey) {
+                    alert('Please enter your API Key first');
+                    return;
+                }
+                
+                // Store API key for later use
+                localStorage.setItem('kite_api_key', apiKey);
+                
+                // Redirect to Kite Connect OAuth URL
+                const redirectUrl = `${window.location.origin}`;
+                const kiteAuthUrl = `https://kite.trade/connect/login?api_key=${apiKey}&v=3`;
+                
+                addLog('🔄 Redirecting to Kite Connect for authentication...', 'info');
+                
+                // Open in same window for OAuth flow
+                window.location.href = kiteAuthUrl;
+            });
+        }
+
+        // Add generate access token handler
+        const generateTokenBtn = document.getElementById('generateTokenBtn');
+        if (generateTokenBtn) {
+            generateTokenBtn.addEventListener('click', function() {
+                const apiKey = document.getElementById('apiKey').value.trim();
+                const apiSecret = document.getElementById('apiSecret').value.trim();
+                const requestToken = document.getElementById('requestToken').value.trim();
+                
+                if (!apiKey || !apiSecret || !requestToken) {
+                    alert('Please fill in API Key, API Secret, and Request Token');
+                    return;
+                }
+                
+                // Store credentials
+                localStorage.setItem('kite_api_key', apiKey);
+                localStorage.setItem('kite_api_secret', apiSecret);
+                localStorage.setItem('kite_request_token', requestToken);
+                
+                // Update status
+                document.getElementById('authStatus').textContent = 'Generating Access Token...';
+                addLog('🔄 Generating access token...', 'info');
+                
+                // Call backend to generate access token
+                fetch('/api/generate-access-token', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        api_key: apiKey,
+                        api_secret: apiSecret,
+                        request_token: requestToken
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById('authStatus').textContent = 'Authenticated ✅';
+                        window.isAuthenticated = true;
+                        addLog('✅ Access token generated successfully', 'success');
+                        
+                        // Store access token
+                        localStorage.setItem('kite_access_token', data.access_token);
+                    } else {
+                        document.getElementById('authStatus').textContent = 'Token Generation Failed ❌';
+                        addLog(`❌ Failed to generate access token: ${data.error}`, 'error');
+                    }
+                })
+                .catch(error => {
+                    document.getElementById('authStatus').textContent = 'Token Generation Failed ❌';
+                    addLog(`❌ Error generating access token: ${error.message}`, 'error');
+                });
+            });
+        }
+
+        // Load saved credentials and check for OAuth callback
+        const savedApiKey = localStorage.getItem('kite_api_key');
+        const savedApiSecret = localStorage.getItem('kite_api_secret');
+        
+        // Check if we're returning from OAuth callback
+        const urlParams = new URLSearchParams(window.location.search);
+        const requestToken = urlParams.get('request_token');
+        const status = urlParams.get('status');
+        
+        if (requestToken && status === 'success') {
+            // Auto-fill the request token
+            document.getElementById('requestToken').value = requestToken;
+            document.getElementById('authStatus').textContent = 'Request Token Received - Click Generate Access Token';
+            addLog('✅ Request token received from Kite Connect', 'success');
+            addLog('🎫 Please click "Generate Access Token" to complete authentication', 'info');
+            
+            // Clean up URL
+            window.history.replaceState({}, document.title, window.location.pathname);
+            
+        } else if (status === 'error') {
+            document.getElementById('authStatus').textContent = 'Authentication Failed ❌';
+            addLog('❌ OAuth authentication failed', 'error');
+            
+        } else if (savedApiKey && savedApiSecret) {
+            // Load saved credentials
+            document.getElementById('apiKey').value = savedApiKey;
+            document.getElementById('apiSecret').value = savedApiSecret;
+            
+            // Check if we have access token
+            const savedAccessToken = localStorage.getItem('kite_access_token');
+            if (savedAccessToken) {
+                document.getElementById('authStatus').textContent = 'Authenticated ✅';
+                window.isAuthenticated = true;
+            }
+        }
+    });
+
+    // Update strike data when new data arrives
+    const originalUpdateUI = window.updateUI;
+    if (originalUpdateUI) {
+        window.updateUI = function(data) {
+            originalUpdateUI(data);
+            
+            // Update strike analysis if active
+            const activeTab = document.querySelector('.strike-tab.active');
+            if (activeTab) {
+                const strikeKey = activeTab.getAttribute('data-strike');
+                const strikeMapping = {
+                    'atm-3': { label: 'ATM-3', color: '#ef4444', dataKey: 'atmM3' },
+                    'atm-2': { label: 'ATM-2', color: '#f97316', dataKey: 'atmM2' },
+                    'atm-1': { label: 'ATM-1', color: '#eab308', dataKey: 'atmM1' },
+                    'atm': { label: 'ATM', color: '#22c55e', dataKey: 'atm' },
+                    'atm+1': { label: 'ATM+1', color: '#06b6d4', dataKey: 'atmP1' },
+                    'atm+2': { label: 'ATM+2', color: '#3b82f6', dataKey: 'atmP2' },
+                    'atm+3': { label: 'ATM+3', color: '#8b5cf6', dataKey: 'atmP3' }
+                };
+                
+                if (strikeMapping[strikeKey]) {
+                    updateStrikeData(strikeMapping[strikeKey]);
+                }
+            }
+        };
+    }
+    </script>
+
+    <style>
+        .strike-tab {
+            transition: all 0.2s ease;
+            opacity: 0.8;
+        }
+        
+        .strike-tab:hover {
+            opacity: 1;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .strike-tab.active {
+            opacity: 1;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+        
+        .strike-tabs-container {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background: white;
+            padding: 8px 0;
+            margin: -8px 0 20px 0;
+        }
+        
+        @media (max-width: 768px) {
+            .strike-tabs {
+                padding: 2px;
+                gap: 1px;
+            }
+            
+            .strike-tab {
+                min-width: 80px;
+                padding: 6px 8px;
+                font-size: 11px;
+            }
+        }
+    </style>
 </body>
 </html>

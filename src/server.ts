@@ -83,8 +83,9 @@ class Server {
   }
 
   private setupBreakoutIntegration(services: any): void {
-    // Integrate both original and enhanced breakout detection with periodic data fetch
-    if (services.periodicFetchService) {
+    // Integrate breakout detection with periodic data fetch
+    if (services.periodicFetchService && services.breakoutService) {
+      // Hook into the periodic fetch to feed data to breakout detection
       const originalFetchData = services.periodicFetchService.fetchData;
       
       services.periodicFetchService.fetchData = async () => {
@@ -92,55 +93,19 @@ class Server {
           // Call original fetch method
           const result = await originalFetchData.call(services.periodicFetchService);
           
-          // If data was successfully fetched, analyze breakouts
+          // If data was successfully fetched, add it to breakout detection
           if (result && result.success && result.data) {
+            services.breakoutService.addDataPoint(result.data);
             
-            // Original breakout detection (if available)
-            if (services.breakoutService) {
-              services.breakoutService.addDataPoint(result.data);
-              const analysis = services.breakoutService.analyzeBreakouts();
-              const highPrioritySignals = analysis.signals.filter((s: any) => s.priority === 'HIGH');
-              
-              if (highPrioritySignals.length > 0) {
-                logger.info(`🚨 BREAKOUT ALERT: ${highPrioritySignals.length} high priority signals detected!`);
-                highPrioritySignals.forEach((signal: any) => {
-                  logger.info(`   ${signal.type} ${signal.pattern}: ${signal.message} (Confidence: ${signal.confidence}%)`);
-                });
-              }
-            }
+            // Analyze breakouts and log high priority signals
+            const analysis = services.breakoutService.analyzeBreakouts();
+            const highPrioritySignals = analysis.signals.filter((s: any) => s.priority === 'HIGH');
             
-            // Enhanced breakout detection
-            if (services.enhancedBreakoutService) {
-              try {
-                // Get historical data for enhanced analysis
-                const historicalData = await this.getHistoricalDataForBreakouts();
-                
-                if (historicalData) {
-                  const enhancedSignals = services.enhancedBreakoutService.generateEnhancedBreakoutSignals(
-                    result.data,
-                    historicalData
-                  );
-                  
-                  if (enhancedSignals.length > 0) {
-                    logger.info(`🎯 Enhanced Breakout Analysis: ${enhancedSignals.length} signals generated`);
-                    
-                    // Log high confidence enhanced signals
-                    const highConfidenceSignals = enhancedSignals.filter((s: any) => s.confidence >= 0.8);
-                    if (highConfidenceSignals.length > 0) {
-                      logger.info(`⚡ HIGH CONFIDENCE ENHANCED SIGNALS:`);
-                      highConfidenceSignals.forEach((signal: any) => {
-                        logger.info(`   ${signal.type}: ${signal.description} (${(signal.confidence * 100).toFixed(0)}% confidence)`);
-                      });
-                    }
-                    
-                    // Store enhanced signals for API access
-                    this.latestEnhancedSignals = enhancedSignals;
-                    this.lastSignalUpdate = new Date().toISOString();
-                  }
-                }
-              } catch (enhancedError) {
-                logger.warn('Enhanced breakout analysis failed:', enhancedError);
-              }
+            if (highPrioritySignals.length > 0) {
+              logger.info(`🚨 BREAKOUT ALERT: ${highPrioritySignals.length} high priority signals detected!`);
+              highPrioritySignals.forEach((signal: any) => {
+                logger.info(`   ${signal.type} ${signal.pattern}: ${signal.message} (Confidence: ${signal.confidence}%)`);
+              });
             }
           }
           
@@ -152,31 +117,7 @@ class Server {
         }
       };
       
-      logger.info('✅ Enhanced breakout detection integrated with periodic fetch service');
-    }
-  }
-
-  private latestEnhancedSignals: any[] = [];
-  private lastSignalUpdate: string = '';
-
-  private async getHistoricalDataForBreakouts(): Promise<any> {
-    try {
-      // This would integrate with your existing historical data service
-      // For now, return a basic structure
-      return {
-        timestamps: [],
-        spotPrices: [],
-        volumes: [],
-        highs: [],
-        lows: [],
-        opens: [],
-        vwaps: [],
-        calls: { oi: [], volume: [], iv: [] },
-        puts: { oi: [], volume: [], iv: [] }
-      };
-    } catch (error) {
-      logger.error('Error getting historical data for breakouts:', error);
-      return null;
+      logger.info('✅ Breakout detection integrated with periodic fetch service');
     }
   }
 

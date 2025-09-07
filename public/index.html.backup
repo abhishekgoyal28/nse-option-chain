@@ -100,6 +100,16 @@
         .tracking-active { background: #dcfce7; color: #166534; }
         .tracking-inactive { background: #fee2e2; color: #991b1b; }
         
+        #nextUpdate {
+            color: #3b82f6;
+            font-weight: 600;
+            font-family: 'Courier New', monospace;
+        }
+        #nextUpdate.urgent {
+            color: #f59e0b;
+            animation: pulse 1s infinite;
+        }
+        
         .indicators-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; margin-bottom: 24px; }
         .indicator { padding: 16px; border-radius: 8px; border: 2px solid; transition: all 0.3s; background: white; }
         .indicator-bullish { border-color: #10b981; background: linear-gradient(135deg, #ecfdf5, #f0fdf4); }
@@ -134,9 +144,25 @@
         .condition-details { font-size: 12px; color: #6b7280; margin-bottom: 8px; }
         .condition-value { font-family: 'Courier New', monospace; font-size: 13px; font-weight: 600; }
         
-        .signal-alert { background: linear-gradient(135deg, #fef3c7, #fed7aa); border: 2px solid #f59e0b; border-radius: 12px; padding: 24px; margin-bottom: 24px; }
-        .signal-alert h2 { color: #92400e; margin: 0 0 12px 0; font-size: 20px; }
-        .signal-alert p { color: #92400e; margin: 8px 0; font-weight: 500; }
+        .signal-alert { border-radius: 12px; padding: 24px; margin-bottom: 24px; }
+        .signal-alert h2 { margin: 0 0 12px 0; font-size: 20px; }
+        .signal-alert p { margin: 8px 0; font-weight: 500; }
+        
+        /* Bullish Signal Styling */
+        #bullishSignalAlert { 
+            background: linear-gradient(135deg, #dcfce7, #bbf7d0); 
+            border: 2px solid #10b981; 
+        }
+        #bullishSignalAlert h2 { color: #065f46; }
+        #bullishSignalAlert p { color: #065f46; }
+        
+        /* Bearish Signal Styling */
+        #bearishSignalAlert { 
+            background: linear-gradient(135deg, #fee2e2, #fecaca); 
+            border: 2px solid #ef4444; 
+        }
+        #bearishSignalAlert h2 { color: #991b1b; }
+        #bearishSignalAlert p { color: #991b1b; }
 
         .historical-summary {
             background: #f0f9ff;
@@ -208,6 +234,7 @@
             </div>
             <div style="display: flex; gap: 16px; align-items: center;">
                 <span id="lastUpdate">Last Update: --:--:--</span>
+                <span id="nextUpdate" class="hidden">Next Update: --s</span>
                 <span id="userInfo">User: Not logged in</span>
             </div>
         </div>
@@ -362,6 +389,29 @@
                     </div>
                 </div>
 
+                <!-- Multi-Strike Option Chain -->
+                <div class="card" style="grid-column: span 2;">
+                    <h3>📊 Multi-Strike Option Chain (ATM ±3)</h3>
+                    <div class="multi-strike-container" style="overflow-x: auto;">
+                        <table class="multi-strike-table" style="width: 100%; min-width: 800px; border-collapse: collapse; font-size: 12px;">
+                            <thead>
+                                <tr style="background: #f3f4f6;">
+                                    <th style="padding: 8px; border: 1px solid #e5e7eb;">Strike</th>
+                                    <th style="padding: 8px; border: 1px solid #e5e7eb; color: #059669;">Call OI</th>
+                                    <th style="padding: 8px; border: 1px solid #e5e7eb; color: #059669;">Call Vol</th>
+                                    <th style="padding: 8px; border: 1px solid #e5e7eb; color: #059669;">Call LTP</th>
+                                    <th style="padding: 8px; border: 1px solid #e5e7eb; color: #dc2626;">Put LTP</th>
+                                    <th style="padding: 8px; border: 1px solid #e5e7eb; color: #dc2626;">Put Vol</th>
+                                    <th style="padding: 8px; border: 1px solid #e5e7eb; color: #dc2626;">Put OI</th>
+                                </tr>
+                            </thead>
+                            <tbody id="multiStrikeTableBody">
+                                <!-- Will be populated by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
                 <div class="card">
                     <h3>🎯 Chart Status</h3>
                     <div class="metric">
@@ -447,6 +497,291 @@
             </div>
         </div>
 
+        <!-- Multi-Strike Charts Section -->
+        <h2 style="margin: 24px 0 16px 0; color: #1f2937;">📊 Multi-Strike Analysis (ATM ±3)</h2>
+        
+        <!-- Strike Selection Tabs -->
+        <div class="strike-tabs-container" style="margin-bottom: 20px;">
+            <div class="strike-tabs" style="display: flex; background: #f8f9fa; border-radius: 8px; padding: 4px; overflow-x: auto;">
+                <button class="strike-tab active" data-strike="atm-3" style="flex: 1; min-width: 100px; padding: 8px 12px; border: none; background: #3b82f6; color: white; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 500; margin-right: 2px;">ATM-3</button>
+                <button class="strike-tab" data-strike="atm-2" style="flex: 1; min-width: 100px; padding: 8px 12px; border: none; background: transparent; color: #6b7280; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 500; margin-right: 2px;">ATM-2</button>
+                <button class="strike-tab" data-strike="atm-1" style="flex: 1; min-width: 100px; padding: 8px 12px; border: none; background: transparent; color: #6b7280; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 500; margin-right: 2px;">ATM-1</button>
+                <button class="strike-tab" data-strike="atm" style="flex: 1; min-width: 100px; padding: 8px 12px; border: none; background: transparent; color: #6b7280; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; margin-right: 2px;">ATM ⭐</button>
+                <button class="strike-tab" data-strike="atm+1" style="flex: 1; min-width: 100px; padding: 8px 12px; border: none; background: transparent; color: #6b7280; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 500; margin-right: 2px;">ATM+1</button>
+                <button class="strike-tab" data-strike="atm+2" style="flex: 1; min-width: 100px; padding: 8px 12px; border: none; background: transparent; color: #6b7280; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 500; margin-right: 2px;">ATM+2</button>
+                <button class="strike-tab" data-strike="atm+3" style="flex: 1; min-width: 100px; padding: 8px 12px; border: none; background: transparent; color: #6b7280; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 500;">ATM+3</button>
+            </div>
+        </div>
+
+        <!-- Strike Charts Container -->
+        <div class="strike-charts-container">
+            <!-- ATM-3 Charts -->
+            <div class="strike-content" id="strike-atm-3" style="display: block;">
+                <div class="grid-charts">
+                    <div class="card">
+                        <div class="chart-header">
+                            <h3 style="color: #ef4444;">📈 ATM-3 Call LTP</h3>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="atmM3CallChart" width="500" height="300"></canvas>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="chart-header">
+                            <h3 style="color: #ef4444;">📉 ATM-3 Put LTP</h3>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="atmM3PutChart" width="500" height="300"></canvas>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="chart-header">
+                            <h3 style="color: #ef4444;">📊 ATM-3 Call Volume</h3>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="atmM3CallVolumeChart" width="500" height="300"></canvas>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="chart-header">
+                            <h3 style="color: #ef4444;">📊 ATM-3 Put Volume</h3>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="atmM3PutVolumeChart" width="500" height="300"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ATM-2 Charts -->
+            <div class="strike-content" id="strike-atm-2" style="display: none;">
+                <div class="grid-charts">
+                    <div class="card">
+                        <div class="chart-header">
+                            <h3 style="color: #f97316;">📈 ATM-2 Call LTP</h3>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="atmM2CallChart" width="500" height="300"></canvas>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="chart-header">
+                            <h3 style="color: #f97316;">📉 ATM-2 Put LTP</h3>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="atmM2PutChart" width="500" height="300"></canvas>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="chart-header">
+                            <h3 style="color: #f97316;">📊 ATM-2 Call Volume</h3>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="atmM2CallVolumeChart" width="500" height="300"></canvas>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="chart-header">
+                            <h3 style="color: #f97316;">📊 ATM-2 Put Volume</h3>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="atmM2PutVolumeChart" width="500" height="300"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ATM-1 Charts -->
+            <div class="strike-content" id="strike-atm-1" style="display: none;">
+                <div class="grid-charts">
+                    <div class="card">
+                        <div class="chart-header">
+                            <h3 style="color: #eab308;">📈 ATM-1 Call LTP</h3>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="atmM1CallChart" width="500" height="300"></canvas>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="chart-header">
+                            <h3 style="color: #eab308;">📉 ATM-1 Put LTP</h3>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="atmM1PutChart" width="500" height="300"></canvas>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="chart-header">
+                            <h3 style="color: #eab308;">📊 ATM-1 Call Volume</h3>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="atmM1CallVolumeChart" width="500" height="300"></canvas>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="chart-header">
+                            <h3 style="color: #eab308;">📊 ATM-1 Put Volume</h3>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="atmM1PutVolumeChart" width="500" height="300"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ATM Charts -->
+            <div class="strike-content" id="strike-atm" style="display: none;">
+                <div class="grid-charts">
+                    <div class="card">
+                        <div class="chart-header">
+                            <h3 style="color: #22c55e;">📈 ATM Call LTP ⭐</h3>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="atmCallChart" width="500" height="300"></canvas>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="chart-header">
+                            <h3 style="color: #22c55e;">📉 ATM Put LTP ⭐</h3>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="atmPutChart" width="500" height="300"></canvas>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="chart-header">
+                            <h3 style="color: #22c55e;">📊 ATM Call Volume ⭐</h3>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="atmCallVolumeChart" width="500" height="300"></canvas>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="chart-header">
+                            <h3 style="color: #22c55e;">📊 ATM Put Volume ⭐</h3>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="atmPutVolumeChart" width="500" height="300"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ATM+1 Charts -->
+            <div class="strike-content" id="strike-atm+1" style="display: none;">
+                <div class="grid-charts">
+                    <div class="card">
+                        <div class="chart-header">
+                            <h3 style="color: #06b6d4;">📈 ATM+1 Call LTP</h3>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="atmP1CallChart" width="500" height="300"></canvas>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="chart-header">
+                            <h3 style="color: #06b6d4;">📉 ATM+1 Put LTP</h3>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="atmP1PutChart" width="500" height="300"></canvas>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="chart-header">
+                            <h3 style="color: #06b6d4;">📊 ATM+1 Call Volume</h3>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="atmP1CallVolumeChart" width="500" height="300"></canvas>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="chart-header">
+                            <h3 style="color: #06b6d4;">📊 ATM+1 Put Volume</h3>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="atmP1PutVolumeChart" width="500" height="300"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ATM+2 Charts -->
+            <div class="strike-content" id="strike-atm+2" style="display: none;">
+                <div class="grid-charts">
+                    <div class="card">
+                        <div class="chart-header">
+                            <h3 style="color: #3b82f6;">📈 ATM+2 Call LTP</h3>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="atmP2CallChart" width="500" height="300"></canvas>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="chart-header">
+                            <h3 style="color: #3b82f6;">📉 ATM+2 Put LTP</h3>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="atmP2PutChart" width="500" height="300"></canvas>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="chart-header">
+                            <h3 style="color: #3b82f6;">📊 ATM+2 Call Volume</h3>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="atmP2CallVolumeChart" width="500" height="300"></canvas>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="chart-header">
+                            <h3 style="color: #3b82f6;">📊 ATM+2 Put Volume</h3>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="atmP2PutVolumeChart" width="500" height="300"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ATM+3 Charts -->
+            <div class="strike-content" id="strike-atm+3" style="display: none;">
+                <div class="grid-charts">
+                    <div class="card">
+                        <div class="chart-header">
+                            <h3 style="color: #8b5cf6;">📈 ATM+3 Call LTP</h3>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="atmP3CallChart" width="500" height="300"></canvas>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="chart-header">
+                            <h3 style="color: #8b5cf6;">📉 ATM+3 Put LTP</h3>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="atmP3PutChart" width="500" height="300"></canvas>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="chart-header">
+                            <h3 style="color: #8b5cf6;">📊 ATM+3 Call Volume</h3>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="atmP3CallVolumeChart" width="500" height="300"></canvas>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="chart-header">
+                            <h3 style="color: #8b5cf6;">📊 ATM+3 Put Volume</h3>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="atmP3PutVolumeChart" width="500" height="300"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Market Indicators -->
         <h2 style="margin: 0 0 16px 0; color: #1f2937;">📊 Market Indicators</h2>
         <div class="indicators-grid" id="indicatorsGrid">
@@ -459,12 +794,20 @@
             <!-- Conditions will be populated by JavaScript -->
         </div>
 
-        <!-- Signal Alert -->
-        <div class="signal-alert hidden" id="signalAlert">
+        <!-- Bullish Signal Alert -->
+        <div class="signal-alert hidden" id="bullishSignalAlert" style="border-left: 4px solid #10b981;">
+            <h2>🚀 BULLISH BIAS SIGNAL DETECTED</h2>
+            <p><strong>Bullish Bias – Upward move expected</strong></p>
+            <p>All conditions satisfied at <span id="bullishSignalTimestamp">--:--:--</span></p>
+            <p>Confidence Level: <span id="bullishSignalConfidence">HIGH</span> | Spot Price: <span id="bullishSignalSpot">--</span></p>
+        </div>
+
+        <!-- Bearish Signal Alert -->
+        <div class="signal-alert hidden" id="bearishSignalAlert" style="border-left: 4px solid #ef4444;">
             <h2>🚨 BEARISH BIAS SIGNAL DETECTED</h2>
             <p><strong>Bearish Bias – Downward move expected</strong></p>
-            <p>All conditions satisfied at <span id="signalTimestamp">--:--:--</span></p>
-            <p>Confidence Level: <span id="signalConfidence">HIGH</span> | Spot Price: <span id="signalSpot">--</span></p>
+            <p>All conditions satisfied at <span id="bearishSignalTimestamp">--:--:--</span></p>
+            <p>Confidence Level: <span id="bearishSignalConfidence">HIGH</span> | Spot Price: <span id="bearishSignalSpot">--</span></p>
         </div>
 
         <!-- Activity Logs -->
@@ -518,6 +861,9 @@
         let isAuthenticated = false;
         let isTracking = false;
         let trackingInterval = null;
+        let countdownInterval = null;
+        let nextUpdateTime = null;
+        const UPDATE_INTERVAL = 30000; // 30 seconds
         let accessToken = null;
         let currentData = null;
         let historicalData = null;
@@ -530,6 +876,51 @@
         let volumeChart = null;
         let oiChart = null;
         let pcrChart = null;
+        
+        // Individual Strike Chart Variables
+        let atmM3CallChart = null, atmM3PutChart = null, atmM3CallVolumeChart = null, atmM3PutVolumeChart = null;
+        let atmM2CallChart = null, atmM2PutChart = null, atmM2CallVolumeChart = null, atmM2PutVolumeChart = null;
+        let atmM1CallChart = null, atmM1PutChart = null, atmM1CallVolumeChart = null, atmM1PutVolumeChart = null;
+        let atmCallChart = null, atmPutChart = null, atmCallVolumeChart = null, atmPutVolumeChart = null;
+        let atmP1CallChart = null, atmP1PutChart = null, atmP1CallVolumeChart = null, atmP1PutVolumeChart = null;
+        let atmP2CallChart = null, atmP2PutChart = null, atmP2CallVolumeChart = null, atmP2PutVolumeChart = null;
+        let atmP3CallChart = null, atmP3PutChart = null, atmP3CallVolumeChart = null, atmP3PutVolumeChart = null;
+
+        // Tab Switching Functionality
+        function initializeStrikeTabs() {
+            const tabs = document.querySelectorAll('.strike-tab');
+            const contents = document.querySelectorAll('.strike-content');
+
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    // Remove active class from all tabs
+                    tabs.forEach(t => {
+                        t.classList.remove('active');
+                        t.style.background = 'transparent';
+                        t.style.color = '#6b7280';
+                    });
+
+                    // Hide all content
+                    contents.forEach(content => {
+                        content.style.display = 'none';
+                    });
+
+                    // Activate clicked tab
+                    tab.classList.add('active');
+                    tab.style.background = '#3b82f6';
+                    tab.style.color = 'white';
+
+                    // Show corresponding content
+                    const targetStrike = tab.getAttribute('data-strike');
+                    const targetContent = document.getElementById(`strike-${targetStrike}`);
+                    if (targetContent) {
+                        targetContent.style.display = 'block';
+                    }
+
+                    addLog(`📊 Switched to ${targetStrike.toUpperCase()} strike charts`, 'info');
+                });
+            });
+        }
 
         // Utility Functions
         function formatNumber(num) {
@@ -542,6 +933,45 @@
 
         function formatTime(date = new Date()) {
             return date.toLocaleTimeString();
+        }
+
+        // Countdown Timer Functions
+        function startCountdown() {
+            if (!isTracking) return;
+            
+            nextUpdateTime = Date.now() + UPDATE_INTERVAL;
+            const nextUpdateEl = document.getElementById('nextUpdate');
+            nextUpdateEl.classList.remove('hidden');
+            
+            countdownInterval = setInterval(() => {
+                const remaining = Math.max(0, Math.ceil((nextUpdateTime - Date.now()) / 1000));
+                
+                if (remaining <= 0) {
+                    nextUpdateEl.textContent = 'Updating...';
+                    nextUpdateEl.classList.add('urgent');
+                } else {
+                    nextUpdateEl.textContent = `Next Update: ${remaining}s`;
+                    nextUpdateEl.classList.toggle('urgent', remaining <= 5);
+                }
+            }, 1000);
+        }
+
+        function stopCountdown() {
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
+                countdownInterval = null;
+            }
+            
+            const nextUpdateEl = document.getElementById('nextUpdate');
+            nextUpdateEl.classList.add('hidden');
+            nextUpdateEl.classList.remove('urgent');
+        }
+
+        function resetCountdown() {
+            if (isTracking) {
+                stopCountdown();
+                startCountdown();
+            }
         }
 
         function formatDate(dateStr) {
@@ -634,11 +1064,33 @@
                 createPCRChart();
                 addLog('✅ PCR chart created', 'success');
 
+                // Initialize Strike Tabs
+                initializeStrikeTabs();
+                addLog('✅ Strike tabs initialized', 'success');
+
+                // Create Individual Strike Charts
+                createIndividualStrikeCharts();
+                addLog('✅ Individual strike charts created', 'success');
+
                 chartsReady = true;
                 document.getElementById('chartStatus').textContent = 'Ready';
                 document.getElementById('chartStatus').className = 'metric-value positive';
                 
-                addLog('✅ All 6 charts initialized successfully', 'success');
+                // DEBUG: Check if all charts were created successfully
+                console.log('🔍 DEBUG: Chart creation status:', {
+                    spotChart: !!spotChart,
+                    callChart: !!callChart,
+                    putChart: !!putChart,
+                    volumeChart: !!volumeChart,
+                    oiChart: !!oiChart,
+                    pcrChart: !!pcrChart,
+                    multiStrikeCallChart: !!multiStrikeCallChart,
+                    multiStrikePutChart: !!multiStrikePutChart,
+                    multiStrikeCallVolumeChart: !!multiStrikeCallVolumeChart,
+                    multiStrikePutVolumeChart: !!multiStrikePutVolumeChart
+                });
+                
+                addLog('✅ All 10 charts initialized successfully', 'success');
 
                 // Load historical data if available
                 if (historicalData) {
@@ -662,11 +1114,15 @@
                     createVolumeChart();
                     createOIChart();
                     createPCRChart();
+                    
+                    // Initialize Strike Tabs and Create Individual Charts
+                    initializeStrikeTabs();
+                    createIndividualStrikeCharts();
 
                     chartsReady = true;
                     document.getElementById('chartStatus').textContent = 'Ready (v3.9)';
                     document.getElementById('chartStatus').className = 'metric-value positive';
-                    addLog('✅ All charts created with Chart.js v3.9', 'success');
+                    addLog('✅ All individual strike charts created with Chart.js v3.9', 'success');
                     
                 } catch (altError) {
                     document.getElementById('chartStatus').textContent = 'Failed';
@@ -1098,6 +1554,562 @@
             console.log('PCR chart created successfully');
         }
 
+        // Individual Strike Chart Creation Functions
+        function createIndividualStrikeCharts() {
+            const strikes = [
+                { prefix: 'atmM3', label: 'ATM-3', color: '#ef4444' },
+                { prefix: 'atmM2', label: 'ATM-2', color: '#f97316' },
+                { prefix: 'atmM1', label: 'ATM-1', color: '#eab308' },
+                { prefix: 'atm', label: 'ATM', color: '#22c55e' },
+                { prefix: 'atmP1', label: 'ATM+1', color: '#06b6d4' },
+                { prefix: 'atmP2', label: 'ATM+2', color: '#3b82f6' },
+                { prefix: 'atmP3', label: 'ATM+3', color: '#8b5cf6' }
+            ];
+
+            strikes.forEach(strike => {
+                // Create Call LTP Chart
+                createStrikeChart(`${strike.prefix}CallChart`, `${strike.label} Call LTP`, strike.color, 'call');
+                
+                // Create Put LTP Chart
+                createStrikeChart(`${strike.prefix}PutChart`, `${strike.label} Put LTP`, strike.color, 'put');
+                
+                // Create Call Volume Chart
+                createStrikeChart(`${strike.prefix}CallVolumeChart`, `${strike.label} Call Volume`, strike.color, 'volume');
+                
+                // Create Put Volume Chart
+                createStrikeChart(`${strike.prefix}PutVolumeChart`, `${strike.label} Put Volume`, strike.color, 'volume');
+            });
+
+            console.log('✅ All individual strike charts created successfully');
+        }
+
+        function createStrikeChart(canvasId, title, color, type) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) {
+                console.warn(`⚠️ Canvas ${canvasId} not found`);
+                return;
+            }
+
+            const ctx = canvas.getContext('2d');
+            const chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['Loading...'],
+                    datasets: [{
+                        label: title,
+                        data: [0],
+                        borderColor: color,
+                        backgroundColor: `${color}20`,
+                        borderWidth: 2,
+                        fill: false,
+                        tension: 0.1,
+                        pointRadius: 2,
+                        pointHoverRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: title,
+                            color: color,
+                            font: {
+                                size: 14,
+                                weight: 'bold'
+                            }
+                        },
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Time (IST)',
+                                color: '#6b7280'
+                            },
+                            grid: {
+                                color: '#e5e7eb'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: type === 'volume' ? 'Volume' : 'Price (₹)',
+                                color: '#6b7280'
+                            },
+                            grid: {
+                                color: '#e5e7eb'
+                            },
+                            beginAtZero: type === 'volume'
+                        }
+                    },
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    }
+                }
+            });
+
+            // Store chart reference in global variable
+            window[canvasId.replace('Chart', 'Chart')] = chart;
+            console.log(`✅ Created ${title} chart`);
+        }
+
+        // Update Individual Strike Charts
+        function updateIndividualStrikeCharts(timeLabels, historicalData) {
+            const strikes = [
+                { prefix: 'atmM3', data: { calls: historicalData.atmM3Calls, puts: historicalData.atmM3Puts } },
+                { prefix: 'atmM2', data: { calls: historicalData.atmM2Calls, puts: historicalData.atmM2Puts } },
+                { prefix: 'atmM1', data: { calls: historicalData.atmM1Calls, puts: historicalData.atmM1Puts } },
+                { prefix: 'atm', data: { calls: historicalData.calls, puts: historicalData.puts } },
+                { prefix: 'atmP1', data: { calls: historicalData.atmP1Calls, puts: historicalData.atmP1Puts } },
+                { prefix: 'atmP2', data: { calls: historicalData.atmP2Calls, puts: historicalData.atmP2Puts } },
+                { prefix: 'atmP3', data: { calls: historicalData.atmP3Calls, puts: historicalData.atmP3Puts } }
+            ];
+
+            strikes.forEach(strike => {
+                // Update Call LTP Chart
+                const callChart = window[`${strike.prefix}CallChart`];
+                if (callChart && strike.data.calls) {
+                    callChart.data.labels = timeLabels;
+                    callChart.data.datasets[0].data = strike.data.calls.ltp || [];
+                    callChart.options.scales.x.title.text = 'Time (IST)';
+                    callChart.update();
+                }
+
+                // Update Put LTP Chart
+                const putChart = window[`${strike.prefix}PutChart`];
+                if (putChart && strike.data.puts) {
+                    putChart.data.labels = timeLabels;
+                    putChart.data.datasets[0].data = strike.data.puts.ltp || [];
+                    putChart.options.scales.x.title.text = 'Time (IST)';
+                    putChart.update();
+                }
+
+                // Update Call Volume Chart
+                const callVolumeChart = window[`${strike.prefix}CallVolumeChart`];
+                if (callVolumeChart && strike.data.calls) {
+                    callVolumeChart.data.labels = timeLabels;
+                    callVolumeChart.data.datasets[0].data = strike.data.calls.volume || [];
+                    callVolumeChart.options.scales.x.title.text = 'Time (IST)';
+                    callVolumeChart.update();
+                }
+
+                // Update Put Volume Chart
+                const putVolumeChart = window[`${strike.prefix}PutVolumeChart`];
+                if (putVolumeChart && strike.data.puts) {
+                    putVolumeChart.data.labels = timeLabels;
+                    putVolumeChart.data.datasets[0].data = strike.data.puts.volume || [];
+                    putVolumeChart.options.scales.x.title.text = 'Time (IST)';
+                    putVolumeChart.update();
+                }
+            });
+        }
+
+        // Update charts with historical data
+                data: {
+                    labels: ['Loading...'],
+                    datasets: [
+                        {
+                            label: 'ATM-3 Call LTP',
+                            data: [0],
+                            borderColor: '#ef4444',
+                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                            borderWidth: 2,
+                            fill: false,
+                            tension: 0.1
+                        },
+                        {
+                            label: 'ATM-2 Call LTP',
+                            data: [0],
+                            borderColor: '#f97316',
+                            backgroundColor: 'rgba(249, 115, 22, 0.1)',
+                            borderWidth: 2,
+                            fill: false,
+                            tension: 0.1
+                        },
+                        {
+                            label: 'ATM-1 Call LTP',
+                            data: [0],
+                            borderColor: '#eab308',
+                            backgroundColor: 'rgba(234, 179, 8, 0.1)',
+                            borderWidth: 2,
+                            fill: false,
+                            tension: 0.1
+                        },
+                        {
+                            label: 'ATM Call LTP',
+                            data: [0],
+                            borderColor: '#22c55e',
+                            backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                            borderWidth: 3,
+                            fill: false,
+                            tension: 0.1
+                        },
+                        {
+                            label: 'ATM+1 Call LTP',
+                            data: [0],
+                            borderColor: '#06b6d4',
+                            backgroundColor: 'rgba(6, 182, 212, 0.1)',
+                            borderWidth: 2,
+                            fill: false,
+                            tension: 0.1
+                        },
+                        {
+                            label: 'ATM+2 Call LTP',
+                            data: [0],
+                            borderColor: '#3b82f6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            borderWidth: 2,
+                            fill: false,
+                            tension: 0.1
+                        },
+                        {
+                            label: 'ATM+3 Call LTP',
+                            data: [0],
+                            borderColor: '#8b5cf6',
+                            backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                            borderWidth: 2,
+                            fill: false,
+                            tension: 0.1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Multi-Strike Call LTP'
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Time (IST)'
+                            },
+                            ticks: {
+                                maxTicksLimit: 10
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Last Traded Price (₹)'
+                            }
+                        }
+                    }
+                }
+            });
+            console.log('Multi-Strike Call chart created successfully');
+        }
+
+        function createMultiStrikePutChart() {
+            const canvas = document.getElementById('multiStrikePutChart');
+            if (!canvas) {
+                throw new Error('Multi-Strike Put chart canvas not found');
+            }
+            
+            console.log('Creating Multi-Strike Put chart...');
+            const ctx = canvas.getContext('2d');
+            multiStrikePutChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'ATM-3 Put LTP',
+                            data: [],
+                            borderColor: '#ef4444',
+                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                            borderWidth: 2,
+                            fill: false
+                        },
+                        {
+                            label: 'ATM-2 Put LTP',
+                            data: [],
+                            borderColor: '#f97316',
+                            backgroundColor: 'rgba(249, 115, 22, 0.1)',
+                            borderWidth: 2,
+                            fill: false
+                        },
+                        {
+                            label: 'ATM-1 Put LTP',
+                            data: [],
+                            borderColor: '#eab308',
+                            backgroundColor: 'rgba(234, 179, 8, 0.1)',
+                            borderWidth: 2,
+                            fill: false
+                        },
+                        {
+                            label: 'ATM Put LTP',
+                            data: [],
+                            borderColor: '#dc2626',
+                            backgroundColor: 'rgba(220, 38, 38, 0.1)',
+                            borderWidth: 3,
+                            fill: false
+                        },
+                        {
+                            label: 'ATM+1 Put LTP',
+                            data: [],
+                            borderColor: '#06b6d4',
+                            backgroundColor: 'rgba(6, 182, 212, 0.1)',
+                            borderWidth: 2,
+                            fill: false
+                        },
+                        {
+                            label: 'ATM+2 Put LTP',
+                            data: [],
+                            borderColor: '#3b82f6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            borderWidth: 2,
+                            fill: false
+                        },
+                        {
+                            label: 'ATM+3 Put LTP',
+                            data: [],
+                            borderColor: '#8b5cf6',
+                            backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                            borderWidth: 2,
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Time (IST)'
+                            },
+                            ticks: {
+                                maxTicksLimit: 10
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Last Traded Price (₹)'
+                            }
+                        }
+                    }
+                }
+            });
+            console.log('Multi-Strike Put chart created successfully');
+        }
+
+        function createMultiStrikeCallVolumeChart() {
+            const canvas = document.getElementById('multiStrikeCallVolumeChart');
+            if (!canvas) {
+                throw new Error('Multi-Strike Call Volume chart canvas not found');
+            }
+            
+            console.log('Creating Multi-Strike Call Volume chart...');
+            const ctx = canvas.getContext('2d');
+            multiStrikeCallVolumeChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'ATM-3 Call Vol',
+                            data: [],
+                            borderColor: '#ef4444',
+                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                            borderWidth: 2,
+                            fill: false
+                        },
+                        {
+                            label: 'ATM-2 Call Vol',
+                            data: [],
+                            borderColor: '#f97316',
+                            backgroundColor: 'rgba(249, 115, 22, 0.1)',
+                            borderWidth: 2,
+                            fill: false
+                        },
+                        {
+                            label: 'ATM-1 Call Vol',
+                            data: [],
+                            borderColor: '#eab308',
+                            backgroundColor: 'rgba(234, 179, 8, 0.1)',
+                            borderWidth: 2,
+                            fill: false
+                        },
+                        {
+                            label: 'ATM Call Vol',
+                            data: [],
+                            borderColor: '#22c55e',
+                            backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                            borderWidth: 3,
+                            fill: false
+                        },
+                        {
+                            label: 'ATM+1 Call Vol',
+                            data: [],
+                            borderColor: '#06b6d4',
+                            backgroundColor: 'rgba(6, 182, 212, 0.1)',
+                            borderWidth: 2,
+                            fill: false
+                        },
+                        {
+                            label: 'ATM+2 Call Vol',
+                            data: [],
+                            borderColor: '#3b82f6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            borderWidth: 2,
+                            fill: false
+                        },
+                        {
+                            label: 'ATM+3 Call Vol',
+                            data: [],
+                            borderColor: '#8b5cf6',
+                            backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                            borderWidth: 2,
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Time (IST)'
+                            },
+                            ticks: {
+                                maxTicksLimit: 10
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Volume'
+                            }
+                        }
+                    }
+                }
+            });
+            console.log('Multi-Strike Call Volume chart created successfully');
+        }
+
+        function createMultiStrikePutVolumeChart() {
+            const canvas = document.getElementById('multiStrikePutVolumeChart');
+            if (!canvas) {
+                throw new Error('Multi-Strike Put Volume chart canvas not found');
+            }
+            
+            console.log('Creating Multi-Strike Put Volume chart...');
+            const ctx = canvas.getContext('2d');
+            multiStrikePutVolumeChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'ATM-3 Put Vol',
+                            data: [],
+                            borderColor: '#ef4444',
+                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                            borderWidth: 2,
+                            fill: false
+                        },
+                        {
+                            label: 'ATM-2 Put Vol',
+                            data: [],
+                            borderColor: '#f97316',
+                            backgroundColor: 'rgba(249, 115, 22, 0.1)',
+                            borderWidth: 2,
+                            fill: false
+                        },
+                        {
+                            label: 'ATM-1 Put Vol',
+                            data: [],
+                            borderColor: '#eab308',
+                            backgroundColor: 'rgba(234, 179, 8, 0.1)',
+                            borderWidth: 2,
+                            fill: false
+                        },
+                        {
+                            label: 'ATM Put Vol',
+                            data: [],
+                            borderColor: '#dc2626',
+                            backgroundColor: 'rgba(220, 38, 38, 0.1)',
+                            borderWidth: 3,
+                            fill: false
+                        },
+                        {
+                            label: 'ATM+1 Put Vol',
+                            data: [],
+                            borderColor: '#06b6d4',
+                            backgroundColor: 'rgba(6, 182, 212, 0.1)',
+                            borderWidth: 2,
+                            fill: false
+                        },
+                        {
+                            label: 'ATM+2 Put Vol',
+                            data: [],
+                            borderColor: '#3b82f6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            borderWidth: 2,
+                            fill: false
+                        },
+                        {
+                            label: 'ATM+3 Put Vol',
+                            data: [],
+                            borderColor: '#8b5cf6',
+                            backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                            borderWidth: 2,
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Time (IST)'
+                            },
+                            ticks: {
+                                maxTicksLimit: 10
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Volume'
+                            }
+                        }
+                    }
+                }
+            });
+            console.log('Multi-Strike Put Volume chart created successfully');
+        }
+
         // Update charts with historical data
         function updateChartsWithHistoricalData() {
             if (!chartsReady || !historicalData) {
@@ -1178,7 +2190,10 @@
                     pcrChart.update();
                 }
 
-                addLog('✅ All charts updated with timestamped historical data', 'success');
+                // Update Individual Strike Charts
+                updateIndividualStrikeCharts(timeLabels, historicalData);
+
+                addLog('✅ All individual strike charts updated with timestamped historical data', 'success');
 
             } catch (error) {
                 console.error('Chart update error:', error);
@@ -1223,7 +2238,7 @@
         function loadHistoricalDataSummary() {
             addLog('📊 Loading historical data summary...', 'info');
             
-            apiCall('historical-summary')
+            apiCall('data/historical/summary')
                 .then(response => {
                     if (response.success && response.data) {
                         const data = response.data;
@@ -1253,7 +2268,7 @@
             
             setButtonLoading('loadHistoricalBtn', true);
             
-            let endpoint = 'historical-data';
+            let endpoint = 'data/historical';
             const params = new URLSearchParams();
             
             if (timeframe && timeframe !== 'all') {
@@ -1309,7 +2324,7 @@
             addLog('🗑️ Clearing historical data...', 'warning');
             setButtonLoading('clearHistoricalBtn', true);
             
-            apiCall('historical-data', { method: 'DELETE' })
+            apiCall('data/historical', { method: 'DELETE' })
                 .then(response => {
                     if (response.success) {
                         addLog('✅ Historical data cleared successfully', 'success');
@@ -1367,7 +2382,7 @@
 
             setButtonLoading('loginUrlBtn', true);
             
-            apiCall('login-url')
+            apiCall('auth/login-url')
                 .then(response => {
                     if (response.success) {
                         addLog('✅ Login URL generated successfully', 'success');
@@ -1402,7 +2417,7 @@
             updateConnectionStatus('connecting', 'Authenticating...');
             addLog('🔐 Generating access token...', 'info');
 
-            apiCall('generate-token', {
+            apiCall('auth/generate-token', {
                 method: 'POST',
                 body: JSON.stringify({ request_token: requestToken })
             })
@@ -1443,7 +2458,7 @@
         }
 
         function setAccessToken() {
-            return apiCall('set-token', {
+            return apiCall('auth/set-token', {
                 method: 'POST',
                 body: JSON.stringify({ access_token: accessToken })
             })
@@ -1469,7 +2484,14 @@
 
             addLog('📊 Fetching NIFTY option chain data...', 'info');
             
-            return apiCall('nifty-data')
+            // Show loading state
+            const nextUpdateEl = document.getElementById('nextUpdate');
+            if (isTracking) {
+                nextUpdateEl.textContent = 'Updating...';
+                nextUpdateEl.classList.add('urgent');
+            }
+            
+            return apiCall('data/nifty')
                 .then(response => {
                     if (response.success) {
                         currentData = response.data;
@@ -1477,6 +2499,9 @@
                         
                         document.getElementById('lastUpdate').textContent = `Last Update: ${formatTime()}`;
                         addLog('✅ Data updated successfully', 'success');
+                        
+                        // Reset countdown timer after successful update
+                        resetCountdown();
                         
                         // Handle market status and historical data saving
                         if (response.market_status) {
@@ -1556,6 +2581,46 @@
                 document.getElementById('putIV').textContent = 'No Data';
                 document.getElementById('putChange').textContent = 'No Data';
             }
+
+            // Update Multi-Strike Table
+            updateMultiStrikeTable();
+        }
+
+        function updateMultiStrikeTable() {
+            if (!currentData) return;
+
+            const atmStrike = currentData.atm_strike;
+            const strikeInterval = 50;
+            const tableBody = document.getElementById('multiStrikeTableBody');
+            
+            if (!tableBody) return;
+
+            let tableHTML = '';
+
+            // Create rows for ATM-3 to ATM+3
+            for (let i = -3; i <= 3; i++) {
+                const strike = atmStrike + (i * strikeInterval);
+                const callOption = currentData.options[strike]?.CE;
+                const putOption = currentData.options[strike]?.PE;
+                
+                const isATM = i === 0;
+                const rowClass = isATM ? 'style="background: #fef3c7; font-weight: bold;"' : '';
+                const strikeLabel = isATM ? `${strike} (ATM)` : `${strike} (ATM${i > 0 ? '+' : ''}${i})`;
+
+                tableHTML += `
+                    <tr ${rowClass}>
+                        <td style="padding: 6px; border: 1px solid #e5e7eb; text-align: center; font-weight: ${isATM ? 'bold' : 'normal'};">${strikeLabel}</td>
+                        <td style="padding: 6px; border: 1px solid #e5e7eb; text-align: right; color: #059669;">${formatNumber(callOption?.oi || 0)}</td>
+                        <td style="padding: 6px; border: 1px solid #e5e7eb; text-align: right; color: #059669;">${formatNumber(callOption?.volume || 0)}</td>
+                        <td style="padding: 6px; border: 1px solid #e5e7eb; text-align: right; color: #059669; font-weight: bold;">${callOption?.last_price ? callOption.last_price.toFixed(2) : '--'}</td>
+                        <td style="padding: 6px; border: 1px solid #e5e7eb; text-align: right; color: #dc2626; font-weight: bold;">${putOption?.last_price ? putOption.last_price.toFixed(2) : '--'}</td>
+                        <td style="padding: 6px; border: 1px solid #e5e7eb; text-align: right; color: #dc2626;">${formatNumber(putOption?.volume || 0)}</td>
+                        <td style="padding: 6px; border: 1px solid #e5e7eb; text-align: right; color: #dc2626;">${formatNumber(putOption?.oi || 0)}</td>
+                    </tr>
+                `;
+            }
+
+            tableBody.innerHTML = tableHTML;
         }
 
         // Market Indicators Functions
@@ -1696,20 +2761,21 @@
                 return;
             }
 
-            const conditions = {
+            // Bullish Signal Conditions
+            const bullishConditions = {
                 condition1: {
                     title: 'ATM Call Volume > 1M',
-                    description: 'High call volume indicates activity',
+                    description: 'High call volume indicates bullish activity',
                     status: (atmCall.volume || 0) > 1000000,
-                    value: `Volume: ${formatNumber(atmCall.volume || 0)}`,
-                    details: 'Large volume indicates institutional activity'
+                    value: `Call Volume: ${formatNumber(atmCall.volume || 0)}`,
+                    details: 'Large call volume indicates institutional bullish activity'
                 },
                 condition2: {
-                    title: 'ATM Put Volume < Call Volume',
-                    description: 'Put activity lower than call activity',
-                    status: (atmPut.volume || 0) < (atmCall.volume || 0),
+                    title: 'Call Volume > Put Volume',
+                    description: 'Call activity higher than put activity',
+                    status: (atmCall.volume || 0) > (atmPut.volume || 0),
                     value: `Put/Call Ratio: ${((atmPut.volume || 0) / (atmCall.volume || 1)).toFixed(2)}`,
-                    details: 'Lower put volume suggests bearish sentiment'
+                    details: 'Higher call volume suggests bullish sentiment'
                 },
                 condition3: {
                     title: 'Call LTP > Put LTP',
@@ -1720,21 +2786,72 @@
                 }
             };
 
-            updateConditionsDisplay(conditions);
+            // Bearish Signal Conditions
+            const bearishConditions = {
+                condition1: {
+                    title: 'ATM Put Volume > 1M',
+                    description: 'High put volume indicates bearish activity',
+                    status: (atmPut.volume || 0) > 1000000,
+                    value: `Put Volume: ${formatNumber(atmPut.volume || 0)}`,
+                    details: 'Large put volume indicates institutional bearish activity'
+                },
+                condition2: {
+                    title: 'Put Volume > Call Volume',
+                    description: 'Put activity higher than call activity',
+                    status: (atmPut.volume || 0) > (atmCall.volume || 0),
+                    value: `Put/Call Ratio: ${((atmPut.volume || 0) / (atmCall.volume || 1)).toFixed(2)}`,
+                    details: 'Higher put volume suggests bearish sentiment'
+                },
+                condition3: {
+                    title: 'Put LTP > Call LTP',
+                    description: 'Put options more expensive than calls',
+                    status: (atmPut.last_price || 0) > (atmCall.last_price || 0),
+                    value: `Put: ₹${(atmPut.last_price || 0).toFixed(2)} | Call: ₹${(atmCall.last_price || 0).toFixed(2)}`,
+                    details: 'Higher put prices indicate bearish bias'
+                }
+            };
 
-            const allMet = Object.values(conditions).every(c => c.status === true);
-            
-            if (allMet) {
-                showSignalAlert();
-                addLog('🚨 SIGNAL DETECTED - All conditions satisfied', 'warning');
+            // Check which signal type to display
+            const bullishAllMet = Object.values(bullishConditions).every(c => c.status === true);
+            const bearishAllMet = Object.values(bearishConditions).every(c => c.status === true);
+
+            if (bullishAllMet) {
+                updateConditionsDisplay(bullishConditions, 'bullish');
+                showBullishSignalAlert();
+                addLog('🚀 BULLISH SIGNAL DETECTED - All bullish conditions satisfied', 'success');
+                hideBearishSignalAlert();
+            } else if (bearishAllMet) {
+                updateConditionsDisplay(bearishConditions, 'bearish');
+                showBearishSignalAlert();
+                addLog('🚨 BEARISH SIGNAL DETECTED - All bearish conditions satisfied', 'warning');
+                hideBullishSignalAlert();
             } else {
-                hideSignalAlert();
+                // Show the more likely signal conditions (or default to bullish)
+                const bullishMetCount = Object.values(bullishConditions).filter(c => c.status === true).length;
+                const bearishMetCount = Object.values(bearishConditions).filter(c => c.status === true).length;
+                
+                if (bearishMetCount > bullishMetCount) {
+                    updateConditionsDisplay(bearishConditions, 'bearish');
+                } else {
+                    updateConditionsDisplay(bullishConditions, 'bullish');
+                }
+                
+                hideBullishSignalAlert();
+                hideBearishSignalAlert();
             }
         }
 
-        function updateConditionsDisplay(conditions) {
+        function updateConditionsDisplay(conditions, signalType) {
             const conditionsGrid = document.getElementById('conditionsGrid');
             conditionsGrid.innerHTML = '';
+            
+            // Add signal type header
+            const headerDiv = document.createElement('div');
+            headerDiv.style.cssText = 'margin-bottom: 12px; padding: 8px; border-radius: 4px; font-weight: bold; text-align: center;';
+            headerDiv.style.backgroundColor = signalType === 'bullish' ? '#dcfce7' : '#fee2e2';
+            headerDiv.style.color = signalType === 'bullish' ? '#166534' : '#991b1b';
+            headerDiv.textContent = `${signalType.toUpperCase()} SIGNAL CONDITIONS`;
+            conditionsGrid.appendChild(headerDiv);
             
             Object.entries(conditions).forEach(([key, condition]) => {
                 const conditionDiv = document.createElement('div');
@@ -1752,15 +2869,26 @@
             });
         }
 
-        function showSignalAlert() {
-            const signalAlert = document.getElementById('signalAlert');
-            signalAlert.classList.remove('hidden');
-            document.getElementById('signalTimestamp').textContent = formatTime();
-            document.getElementById('signalSpot').textContent = currentData.spot_price.toFixed(2);
+        function showBullishSignalAlert() {
+            const bullishAlert = document.getElementById('bullishSignalAlert');
+            bullishAlert.classList.remove('hidden');
+            document.getElementById('bullishSignalTimestamp').textContent = formatTime();
+            document.getElementById('bullishSignalSpot').textContent = currentData.spot_price.toFixed(2);
         }
 
-        function hideSignalAlert() {
-            document.getElementById('signalAlert').classList.add('hidden');
+        function hideBullishSignalAlert() {
+            document.getElementById('bullishSignalAlert').classList.add('hidden');
+        }
+
+        function showBearishSignalAlert() {
+            const bearishAlert = document.getElementById('bearishSignalAlert');
+            bearishAlert.classList.remove('hidden');
+            document.getElementById('bearishSignalTimestamp').textContent = formatTime();
+            document.getElementById('bearishSignalSpot').textContent = currentData.spot_price.toFixed(2);
+        }
+
+        function hideBearishSignalAlert() {
+            document.getElementById('bearishSignalAlert').classList.add('hidden');
         }
 
         // Tracking Functions
@@ -1796,9 +2924,12 @@
                 fetchData().catch(error => {
                     addLog(`❌ Tracking error: ${error.message}`, 'error');
                 });
-            }, 45000);
+            }, UPDATE_INTERVAL);
             
-            addLog('⏰ Tracking started - Updates every 45 seconds', 'info');
+            // Start countdown timer
+            startCountdown();
+            
+            addLog('⏰ Tracking started - Updates every 30 seconds', 'info');
         }
 
         function stopTracking() {
@@ -1815,6 +2946,9 @@
                 clearInterval(trackingInterval);
                 trackingInterval = null;
             }
+            
+            // Stop countdown timer
+            stopCountdown();
             
             addLog('✅ Tracking stopped', 'success');
         }
@@ -2108,6 +3242,9 @@ Check browser console for detailed objects.
             if (trackingInterval) {
                 clearInterval(trackingInterval);
             }
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
+            }
         }
 
         // Wait for DOM to be ready
@@ -2156,7 +3293,11 @@ Check browser console for detailed objects.
         console.log('📊 Chart system: Chart.js (reliable and proven)');
         console.log('💾 Backend integration: Full historical data support');
         console.log('📈 Market Indicators: 6 professional technical indicators');
+        console.log('🚨 Breakout Detection: 7 high-probability pattern detection techniques');
         console.log('🔧 Debug functions available: window.debugFunctions');
     </script>
+    
+    <!-- Breakout Signals Module -->
+    <script src="breakout-signals.js"></script>
 </body>
 </html>

@@ -23,27 +23,10 @@ export class DataController {
         logger.info('Serving latest option data from memory');
 
         const marketOpen = isMarketOpen();
-        
-        // Generate breakout signals (simplified version for TypeScript compatibility)
-        let breakoutSignals = null;
-        try {
-          // Basic signal structure for compatibility
-          breakoutSignals = {
-            signals: [],
-            signalCount: 0,
-            primarySignalType: null,
-            signalStrength: 0,
-            signalDirection: 'neutral',
-            timestamp: new Date().toISOString()
-          };
-        } catch (signalError) {
-          logger.warn('Failed to generate breakout signals:', signalError);
-        }
 
         res.json({
           success: true,
           data: latestData,
-          breakout_signals: breakoutSignals,
           source: 'memory',
           last_updated: latestData.timestamp,
           market_status: {

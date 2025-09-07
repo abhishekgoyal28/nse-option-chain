@@ -288,6 +288,9 @@ class NSETrackerIntegration {
 
     // Cleanup
     cleanup() {
+        // Cleanup logic here
+    }
+
     getSystemStatus() {
         return {
             initialized: this.isInitialized,
@@ -325,6 +328,8 @@ class NSETrackerIntegration {
             return false;
         }
     }
+
+    cleanup() {
         if (this.updateInterval) {
             clearInterval(this.updateInterval);
             this.updateInterval = null;
