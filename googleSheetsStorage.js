@@ -132,14 +132,7 @@ class GoogleSheetsStorage {
                         'PCR_OI',
                         'PCR_Volume',
                         'Underlying_Price',
-                        'Market_Status',
-                        'Breakout_Signals_JSON',
-                        'Signal_Count',
-                        'Primary_Signal_Type',
-                        'Signal_Strength',
-                        'Signal_Direction',
-                        'Signal_Timestamp',
-                        'Conditions_Met'
+                        'Market_Status'
                     ]
                 });
                 console.log('✅ NIFTY_History sheet created successfully');
@@ -152,7 +145,7 @@ class GoogleSheetsStorage {
         }
     }
 
-    processOptionChainData(data, timestamp, breakoutSignals = null) {
+    processOptionChainData(data, timestamp) {
         if (!data || !data.records || !data.records.data) {
             console.warn('⚠️  Invalid option chain data structure');
             return [];
@@ -161,16 +154,6 @@ class GoogleSheetsStorage {
         const rows = [];
         const underlyingPrice = data.records.underlyingValue || 0;
         const marketStatus = this.getMarketStatus();
-
-        // Process breakout signals
-        const signalsData = breakoutSignals || {
-            signals: [],
-            signalCount: 0,
-            primarySignalType: null,
-            signalStrength: 0,
-            signalDirection: 'neutral',
-            timestamp: timestamp.toISOString()
-        };
 
         data.records.data.forEach(record => {
             if (record.strikePrice) {
@@ -193,14 +176,7 @@ class GoogleSheetsStorage {
                     PCR_OI: callData.openInterest ? (putData.openInterest || 0) / callData.openInterest : 0,
                     PCR_Volume: callData.totalTradedVolume ? (putData.totalTradedVolume || 0) / callData.totalTradedVolume : 0,
                     Underlying_Price: underlyingPrice,
-                    Market_Status: marketStatus,
-                    Breakout_Signals_JSON: JSON.stringify(signalsData.signals),
-                    Signal_Count: signalsData.signalCount,
-                    Primary_Signal_Type: signalsData.primarySignalType || '',
-                    Signal_Strength: signalsData.signalStrength,
-                    Signal_Direction: signalsData.signalDirection,
-                    Signal_Timestamp: signalsData.timestamp,
-                    Conditions_Met: signalsData.signals.map(s => s.conditions_met?.join(',')).join(';')
+                    Market_Status: marketStatus
                 });
             }
         });
@@ -232,7 +208,7 @@ class GoogleSheetsStorage {
         }
     }
 
-    async saveNiftyData(optionChainData, breakoutSignals = null) {
+    async saveNiftyData(optionChainData) {
         const sheet = await this.initializeMainSheet();
         if (!sheet) {
             throw new Error('Failed to initialize Google Sheets');
@@ -240,7 +216,7 @@ class GoogleSheetsStorage {
 
         try {
             const timestamp = new Date();
-            const processedData = this.processOptionChainData(optionChainData, timestamp, breakoutSignals);
+            const processedData = this.processOptionChainData(optionChainData, timestamp);
             
             if (processedData.length === 0) {
                 console.warn('⚠️  No data to save to Google Sheets');
@@ -253,8 +229,7 @@ class GoogleSheetsStorage {
                 await new Promise(resolve => setTimeout(resolve, 100)); // Small delay
             }
             
-            const signalInfo = breakoutSignals ? ` with ${breakoutSignals.signalCount} signals` : '';
-            console.log(`✅ Saved ${Math.min(processedData.length, 10)} records to Google Sheets${signalInfo} at ${timestamp.toLocaleString()}`);
+            console.log(`✅ Saved ${Math.min(processedData.length, 10)} records to Google Sheets at ${timestamp.toLocaleString()}`);
             return true;
             
         } catch (error) {
