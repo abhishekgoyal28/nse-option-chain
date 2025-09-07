@@ -239,6 +239,17 @@ class ReliableGoogleSheetsStorage {
             console.log('📊 Original signals:', originalSignalData);
             console.log('🎯 Enhanced signals:', enhancedSignalData);
             console.log('🔬 Advanced analytics:', analyticsData);
+            
+            // Log what's actually being saved to Google Sheets
+            console.log(`📋 GOOGLE SHEETS SAVE SUMMARY:`);
+            console.log(`   Row data length: ${rowData.length} columns`);
+            console.log(`   Spot Price: ${optionChainData.spot_price}`);
+            console.log(`   Original Signal Type: ${originalSignalData[0] || 'None'}`);
+            console.log(`   Enhanced Signal Type: ${enhancedSignalData[0] || 'None'}`);
+            console.log(`   IV Skew: ${analyticsData[0] || 'None'}`);
+            console.log(`   GEX: ${analyticsData[2] || 'None'}`);
+            console.log(`   OI Clusters: ${analyticsData[5] || 'None'}`);
+            console.log(`   Pattern Type: ${analyticsData[7] || 'None'}`);
 
             // Try different sheet names - start with Sheet1 (default)
             const sheetNames = ['NIFTY_Historical_Data_v1'];

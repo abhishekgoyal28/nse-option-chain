@@ -209,7 +209,12 @@ export class GoogleSheetsService {
     });
   }
 
-  public async saveNiftyData(data: NiftyOptionChainData): Promise<void> {
+  public async saveNiftyData(
+    data: NiftyOptionChainData, 
+    breakoutSignals?: any, 
+    enhancedBreakoutSignals?: any, 
+    advancedAnalytics?: any
+  ): Promise<void> {
     if (!this.configured) {
       throw new Error('Google Sheets service not configured');
     }
@@ -302,6 +307,62 @@ export class GoogleSheetsService {
         totalCallOI,
         totalPutOI
       ];
+
+      // Add breakout signals data
+      if (breakoutSignals) {
+        rowData.push(
+          JSON.stringify(breakoutSignals.signals || []),
+          breakoutSignals.signals?.length || 0,
+          breakoutSignals.primarySignalType || '',
+          breakoutSignals.signalStrength || 0,
+          breakoutSignals.signalDirection || '',
+          breakoutSignals.timestamp || '',
+          JSON.stringify(breakoutSignals.conditionsMet || [])
+        );
+      } else {
+        rowData.push('', 0, '', 0, '', '', '');
+      }
+
+      // Add enhanced breakout signals data
+      if (enhancedBreakoutSignals && enhancedBreakoutSignals.length > 0) {
+        const topSignal = enhancedBreakoutSignals[0];
+        const avgConfidence = enhancedBreakoutSignals.reduce((sum: number, s: any) => sum + s.confidence, 0) / enhancedBreakoutSignals.length;
+        const highConfidenceCount = enhancedBreakoutSignals.filter((s: any) => s.confidence >= 0.8).length;
+        
+        rowData.push(
+          topSignal.type || '',
+          topSignal.direction || '',
+          avgConfidence.toFixed(2),
+          enhancedBreakoutSignals.length,
+          highConfidenceCount
+        );
+      } else {
+        rowData.push('', '', '0.00', 0, 0);
+      }
+
+      // Add advanced analytics data
+      if (advancedAnalytics) {
+        rowData.push(
+          advancedAnalytics.ivSkew?.overallSkew?.toFixed(2) || '',
+          advancedAnalytics.ivSkew?.skewVelocity?.toFixed(2) || '',
+          advancedAnalytics.gex?.totalGEX?.toFixed(0) || '',
+          advancedAnalytics.gex?.zeroGammaLevel?.toFixed(0) || '',
+          advancedAnalytics.gex?.maxPainLevel?.toFixed(0) || '',
+          advancedAnalytics.oiClusters?.clusters?.length || 0,
+          advancedAnalytics.oiClusters?.clusterBreakAlert ? 'YES' : 'NO',
+          advancedAnalytics.patterns?.patternType || '',
+          advancedAnalytics.patterns?.confidence?.toFixed(2) || ''
+        );
+      } else {
+        rowData.push('', '', '', '', '', 0, 'NO', '', '');
+      }
+
+      // Log signal data being saved
+      logger.info(`📊 Google Sheets save with signals:`);
+      logger.info(`   Breakout signals: ${breakoutSignals?.signals?.length || 0} detected`);
+      logger.info(`   Enhanced signals: ${enhancedBreakoutSignals?.length || 0} detected`);
+      logger.info(`   Advanced analytics: ${advancedAnalytics ? 'Available' : 'Not available'}`);
+      logger.info(`   Total row data columns: ${rowData.length}`);
 
       // Try different sheet names like the original implementation
       const sheetNames = ['NIFTY_Historical_Data_v1'];

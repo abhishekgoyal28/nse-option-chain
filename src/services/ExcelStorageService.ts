@@ -56,7 +56,13 @@ export class ExcelStorageService {
           'ATM_P3_Call_OI', 'ATM_P3_Call_Volume', 'ATM_P3_Call_LTP', 'ATM_P3_Call_Change', 'ATM_P3_Call_IV',
           'ATM_P3_Put_OI', 'ATM_P3_Put_Volume', 'ATM_P3_Put_LTP', 'ATM_P3_Put_Change', 'ATM_P3_Put_IV',
           // Summary metrics
-          'PCR_Volume', 'PCR_OI', 'Total_Call_OI', 'Total_Put_OI'
+          'PCR_Volume', 'PCR_OI', 'Total_Call_OI', 'Total_Put_OI',
+          // Breakout Signals
+          'Breakout_Signals_JSON', 'Breakout_Signal_Count', 'Primary_Signal_Type', 'Signal_Strength', 'Signal_Direction', 'Signal_Timestamp', 'Conditions_Met_JSON',
+          // Enhanced Breakout Signals
+          'Enhanced_Top_Signal_Type', 'Enhanced_Signal_Direction', 'Enhanced_Avg_Confidence', 'Enhanced_Signal_Count', 'Enhanced_High_Confidence_Count',
+          // Advanced Analytics
+          'IV_Skew', 'IV_Skew_Velocity', 'GEX_Total', 'GEX_Zero_Gamma_Level', 'GEX_Max_Pain_Level', 'OI_Cluster_Count', 'OI_Cluster_Break_Alert', 'Pattern_Type', 'Pattern_Confidence'
         ]
       ];
 
@@ -73,7 +79,12 @@ export class ExcelStorageService {
     }
   }
 
-  public saveData(data: NiftyOptionChainData): boolean {
+  public saveData(
+    data: NiftyOptionChainData, 
+    breakoutSignals?: any, 
+    enhancedBreakoutSignals?: any, 
+    advancedAnalytics?: any
+  ): boolean {
     try {
       const timestamp = new Date();
       const istTimestamp = new Date(timestamp.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
@@ -173,12 +184,61 @@ export class ExcelStorageService {
         totalPutOI
       ];
 
+      // Add breakout signals data
+      if (breakoutSignals) {
+        newRow.push(
+          JSON.stringify(breakoutSignals.signals || []),
+          breakoutSignals.signals?.length || 0,
+          breakoutSignals.primarySignalType || '',
+          breakoutSignals.signalStrength || 0,
+          breakoutSignals.signalDirection || '',
+          breakoutSignals.timestamp || '',
+          JSON.stringify(breakoutSignals.conditionsMet || [])
+        );
+      } else {
+        newRow.push('', 0, '', 0, '', '', '');
+      }
+
+      // Add enhanced breakout signals data
+      if (enhancedBreakoutSignals && enhancedBreakoutSignals.length > 0) {
+        const topSignal = enhancedBreakoutSignals[0];
+        const avgConfidence = enhancedBreakoutSignals.reduce((sum: number, s: any) => sum + s.confidence, 0) / enhancedBreakoutSignals.length;
+        const highConfidenceCount = enhancedBreakoutSignals.filter((s: any) => s.confidence >= 0.8).length;
+        
+        newRow.push(
+          topSignal.type || '',
+          topSignal.direction || '',
+          avgConfidence.toFixed(2),
+          enhancedBreakoutSignals.length,
+          highConfidenceCount
+        );
+      } else {
+        newRow.push('', '', '0.00', 0, 0);
+      }
+
+      // Add advanced analytics data
+      if (advancedAnalytics) {
+        newRow.push(
+          advancedAnalytics.ivSkew?.overallSkew?.toFixed(2) || '',
+          advancedAnalytics.ivSkew?.skewVelocity?.toFixed(2) || '',
+          advancedAnalytics.gex?.totalGEX?.toFixed(0) || '',
+          advancedAnalytics.gex?.zeroGammaLevel?.toFixed(0) || '',
+          advancedAnalytics.gex?.maxPainLevel?.toFixed(0) || '',
+          advancedAnalytics.oiClusters?.clusters?.length || 0,
+          advancedAnalytics.oiClusters?.clusterBreakAlert ? 'YES' : 'NO',
+          advancedAnalytics.patterns?.patternType || '',
+          advancedAnalytics.patterns?.confidence?.toFixed(2) || ''
+        );
+      } else {
+        newRow.push('', '', '', '', '', 0, 'NO', '', '');
+      }
+
       // Add new row to existing data
       existingData.push(newRow);
 
-      // Keep only last 2000 records to manage file size
-      if (existingData.length > 2001 && existingData[0]) { // +1 for header
-        existingData = [existingData[0], ...existingData.slice(-2000)];
+      // Keep only last 10000 records to manage file size
+      if (existingData.length > 10001 && existingData[0]) { // +1 for header
+        existingData = [existingData[0], ...existingData.slice(-10000)];
       }
 
       // Write back to file
