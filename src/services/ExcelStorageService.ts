@@ -236,9 +236,9 @@ export class ExcelStorageService {
       // Add new row to existing data
       existingData.push(newRow);
 
-      // Keep only last 4000 records to manage file size
-      if (existingData.length > 4001 && existingData[0]) { // +1 for header
-        existingData = [existingData[0], ...existingData.slice(-4000)];
+      // Keep only last 10000 records to manage file size
+      if (existingData.length > 10001 && existingData[0]) { // +1 for header
+        existingData = [existingData[0], ...existingData.slice(-10000)];
       }
 
       // Write back to file
