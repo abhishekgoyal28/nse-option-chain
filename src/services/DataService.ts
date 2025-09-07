@@ -7,6 +7,9 @@ import {
 } from '@/types';
 import { ExcelStorageService } from './ExcelStorageService';
 import { GoogleSheetsService } from './GoogleSheetsService';
+import { BreakoutDetectionService } from './BreakoutDetectionService';
+import { EnhancedBreakoutSignalService, MarketData, OptionData } from './EnhancedBreakoutSignalService';
+import { AdvancedAnalyticsService } from './AdvancedAnalyticsService';
 import { isMarketOpen } from '@/utils/market';
 import logger from '@/utils/logger';
 import config from '@/config';
@@ -14,10 +17,16 @@ import config from '@/config';
 export class DataService {
   private excelStorage: ExcelStorageService;
   private googleSheetsStorage: GoogleSheetsService;
+  private breakoutDetectionService: BreakoutDetectionService;
+  private enhancedBreakoutService: EnhancedBreakoutSignalService;
+  private advancedAnalyticsService: AdvancedAnalyticsService;
 
   constructor() {
     this.excelStorage = new ExcelStorageService();
     this.googleSheetsStorage = new GoogleSheetsService();
+    this.breakoutDetectionService = new BreakoutDetectionService();
+    this.enhancedBreakoutService = new EnhancedBreakoutSignalService();
+    this.advancedAnalyticsService = new AdvancedAnalyticsService();
   }
 
   public async saveHistoricalData(data: NiftyOptionChainData): Promise<DataStorageResult> {
@@ -35,12 +44,111 @@ export class DataService {
       let savedToGoogleSheets = false;
       let savedToExcel = false;
 
-      // Primary: Try to save to Google Sheets first
+      // Generate all signals before saving
+      let breakoutSignals = null;
+      let enhancedBreakoutSignals = null;
+      let advancedAnalytics = null;
+
+      try {
+        // Get historical data for signal generation
+        const historicalData = await this.getRecentHistoricalData(50);
+
+        logger.info('🔍 Generating comprehensive signals...');
+
+        // 1. Generate original breakout signals
+        if (this.breakoutDetectionService) {
+          // Add current data to breakout detection service first
+          this.breakoutDetectionService.addDataPoint(data);
+          breakoutSignals = this.breakoutDetectionService.analyzeBreakouts();
+          logger.info(`🚨 Original breakout signals: ${breakoutSignals?.signals?.length || 0} detected`);
+        }
+
+        // 2. Generate enhanced breakout signals
+        if (this.enhancedBreakoutService && historicalData) {
+          // Convert NiftyOptionChainData to MarketData format
+          const convertedOptions: { [strike: string]: OptionData } = {};
+          
+          // Convert options from Record<number, {CE, PE}> to { [strike: string]: OptionData }
+          Object.entries(data.options).forEach(([strike, option]) => {
+            if(option.CE && option.PE) { // Ensure both CE and PE are present
+              convertedOptions[`${strike}`] = {
+                strike: Number(strike),
+                CE: option.CE,
+                PE: option.PE
+              };
+            }
+          });
+
+          const marketData: MarketData = {
+            spot_price: data.spot_price,
+            timestamp: data.timestamp,
+            options: convertedOptions,
+            atm_strike: data.atm_strike
+          };
+
+          enhancedBreakoutSignals = this.enhancedBreakoutService.generateEnhancedBreakoutSignals(marketData, historicalData);
+          logger.info(`🎯 Enhanced breakout signals: ${enhancedBreakoutSignals?.length || 0} detected`);
+          
+          // Log high confidence signals
+          if (enhancedBreakoutSignals && enhancedBreakoutSignals.length > 0) {
+            const highConfidenceSignals = enhancedBreakoutSignals.filter(s => s.confidence >= 0.8);
+            if (highConfidenceSignals.length > 0) {
+              logger.info(`⚡ High confidence enhanced signals: ${highConfidenceSignals.map(s => s.type).join(', ')}`);
+            }
+          }
+        }
+
+        // 3. Generate advanced analytics
+        if (this.advancedAnalyticsService && historicalData) {
+          // Convert NiftyOptionChainData to MarketData format (same conversion as above)
+          const convertedOptions: { [strike: string]: any } = {};
+          
+          Object.entries(data.options).forEach(([strike, option]) => {
+            convertedOptions[`${strike}`] = {
+              strike: Number(strike),
+              CE: option.CE,
+              PE: option.PE
+            };
+          });
+
+          const marketData = {
+            spot_price: data.spot_price,
+            timestamp: data.timestamp,
+            options: convertedOptions,
+            atm_strike: data.atm_strike,
+            expiry: data.expiry
+          };
+
+          advancedAnalytics = this.advancedAnalyticsService.calculateAdvancedMetrics(marketData, [historicalData]);
+          logger.info(`🔬 Advanced analytics generated:`);
+          logger.info(`   IV Skew: ${advancedAnalytics?.ivSkew?.overallSkew?.toFixed(2) || 'N/A'} (velocity: ${advancedAnalytics?.ivSkew?.skewVelocity?.toFixed(2) || 'N/A'})`);
+          logger.info(`   GEX: ${advancedAnalytics?.gex?.totalGEX?.toFixed(0) || 'N/A'} (zone: ${advancedAnalytics?.gex?.dominantGammaZone || 'N/A'})`);
+          logger.info(`   OI Clusters: ${advancedAnalytics?.oiClusters?.clusters?.length || 0} detected`);
+          logger.info(`   Pattern: ${advancedAnalytics?.patterns?.patternType || 'normal'} (confidence: ${((advancedAnalytics?.patterns?.confidence || 0) * 100).toFixed(0)}%)`);
+
+          // Alert on significant findings
+          if (advancedAnalytics?.oiClusters?.clusterBreakAlert) {
+            logger.warn('🚨 ALERT: OI CLUSTER BREAK DETECTED!');
+          }
+          if (advancedAnalytics?.patterns?.discordDetected) {
+            logger.warn('🚨 ALERT: PRICE DISCORD DETECTED!');
+          }
+          if (Math.abs(advancedAnalytics?.gex?.totalGEX || 0) > 100000) {
+            logger.warn(`🚨 ALERT: HIGH GAMMA EXPOSURE: ${advancedAnalytics?.gex?.totalGEX?.toFixed(0)}`);
+          }
+        }
+
+      } catch (signalError) {
+        logger.error('⚠️ Failed to generate signals:', signalError);
+        // Continue with data saving even if signal generation fails
+      }
+
+      // Primary: Try to save to Google Sheets first (with all signals)
       if (this.googleSheetsStorage.isConfigured()) {
         try {
-          await this.googleSheetsStorage.saveNiftyData(data);
+          await this.googleSheetsStorage.saveNiftyData(data, breakoutSignals, enhancedBreakoutSignals, advancedAnalytics);
           savedToGoogleSheets = true;
-          logger.info('✅ Multi-strike data saved to Google Sheets successfully');
+          logger.info('✅ Multi-strike data with all signals saved to Google Sheets successfully');
         } catch (googleError) {
           const errorMessage = (googleError as Error).message;
           logger.warn(`⚠️ Google Sheets save failed: ${errorMessage}`);
@@ -52,16 +160,17 @@ export class DataService {
 
       // Fallback: Always save to Excel (either as fallback or primary if Google Sheets failed)
       try {
-        savedToExcel = this.excelStorage.saveData(data);
+        savedToExcel = this.excelStorage.saveData(data, breakoutSignals, enhancedBreakoutSignals, advancedAnalytics);
         if (savedToExcel) {
           if (savedToGoogleSheets) {
-            logger.info('✅ Multi-strike data also saved to Excel as backup');
+            logger.info('✅ Multi-strike data with signals also saved to Excel as backup');
           } else {
-            logger.info('✅ Multi-strike data saved to Excel successfully');
+            logger.info('✅ Multi-strike data with signals saved to Excel successfully');
           }
         }
       } catch (excelError) {
-        logger.error('❌ Failed to save to Excel:', (excelError as Error).message);
+        const errorMessage = (excelError as Error).message;
+        logger.error(`❌ Excel save failed: ${errorMessage}`);
       }
 
       const success = savedToGoogleSheets || savedToExcel;
@@ -397,5 +506,56 @@ export class DataService {
       excel_file_exists: this.excelStorage.fileExists(),
       google_sheets_configured: configInfo.google_sheets_configured
     };
+  }
+
+  private async getRecentHistoricalData(limit: number = 50): Promise<any> {
+    try {
+      // Get recent historical data for signal generation
+      const historicalData = await this.getHistoricalData({ limit });
+      
+      if (historicalData.success && historicalData.data) {
+        // Convert ChartData to format expected by signal services
+        const data = historicalData.data;
+        
+        // Use real data that we have
+        const timestamps = data.timestamps || [];
+        const spotPrices = data.spotPrices || [];
+        
+        // Calculate total options volume (real data)
+        const volumes = (data.calls?.volume || []).map((callVol, i) => 
+          (callVol || 0) + (data.puts?.volume?.[i] || 0)
+        );
+        
+        // For missing OHLC data, use spot price arrays of same length but mark as unavailable
+        // Signal services should check for this and skip OHLC-dependent calculations
+        return {
+          timestamps,
+          spotPrices,
+          volumes, // Real options volume data
+          // Provide arrays of same length but with spot price (signal services should detect this pattern)
+          highs: spotPrices, // Same as spot - signals should detect this means no real OHLC
+          lows: spotPrices,  // Same as spot - signals should detect this means no real OHLC  
+          opens: spotPrices, // Same as spot - signals should detect this means no real OHLC
+          vwaps: spotPrices, // Same as spot - signals should detect this means no real OHLC
+          calls: {
+            oi: data.calls?.oi || [],
+            volume: data.calls?.volume || [],
+            iv: data.calls?.iv || []
+          },
+          puts: {
+            oi: data.puts?.oi || [],
+            volume: data.puts?.volume || [],
+            iv: data.puts?.iv || []
+          },
+          // Add a flag to indicate OHLC data is not real
+          hasRealOHLC: false
+        };
+      }
+      
+      return null;
+    } catch (error) {
+      logger.error('Error getting recent historical data:', error);
+      return null;
+    }
   }
 }

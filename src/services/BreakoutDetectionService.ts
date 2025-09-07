@@ -158,6 +158,7 @@ export class BreakoutDetectionService {
   }
 
   public analyzeBreakouts(): BreakoutAnalysisResult {
+    //TODO - currently this.historicalData is in memory which gets reset on service restart
     if (this.historicalData.length < 5) {
       return this.getEmptyResult();
     }
