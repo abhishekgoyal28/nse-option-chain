@@ -429,6 +429,13 @@ async function saveHistoricalData(data) {
             // Get historical data for signal generation (last 50 records)
             const historicalData = getRecentHistoricalData(50);
             
+            // DEBUG: Check if functions are available
+            console.log(`🔍 FUNCTION AVAILABILITY CHECK:`);
+            console.log(`   breakoutSignalGenerator: ${typeof breakoutSignalGenerator !== 'undefined' ? 'Available' : 'Missing'}`);
+            console.log(`   generateEnhancedBreakoutSignals: ${typeof generateEnhancedBreakoutSignals !== 'undefined' ? 'Available' : 'Missing'}`);
+            console.log(`   generateAdvancedAnalytics: ${typeof generateAdvancedAnalytics !== 'undefined' ? 'Available' : 'Missing'}`);
+            console.log(`   Historical data points: ${historicalData ? 'Available' : 'Missing'}`);
+            
             // Generate original breakout signals
             breakoutSignals = breakoutSignalGenerator.generateBreakoutSignals(data, historicalData);
             
@@ -440,43 +447,81 @@ async function saveHistoricalData(data) {
             // Generate advanced analytics (IV skew, GEX, OI clustering, patterns)
             if (typeof generateAdvancedAnalytics === 'function') {
                 advancedAnalytics = generateAdvancedAnalytics(data, historicalData);
-                
-                if (advancedAnalytics) {
-                    console.log(`📊 Advanced Analytics Generated:`);
-                    console.log(`   IV Skew: ${advancedAnalytics.ivSkew.overallSkew.toFixed(2)} (velocity: ${advancedAnalytics.ivSkew.skewVelocity.toFixed(2)})`);
-                    console.log(`   GEX: ${advancedAnalytics.gex.totalGEX.toFixed(0)} (zone: ${advancedAnalytics.gex.dominantGammaZone})`);
-                    console.log(`   OI Clusters: ${advancedAnalytics.oiClusters.clusters.length} detected`);
-                    console.log(`   Patterns: ${advancedAnalytics.patterns.patternType} (confidence: ${(advancedAnalytics.patterns.confidence * 100).toFixed(0)}%)`);
-                    
-                    // Alert on significant findings
-                    if (advancedAnalytics.oiClusters.clusterBreakAlert) {
-                        console.log(`🚨 OI CLUSTER BREAK DETECTED!`);
-                    }
-                    if (advancedAnalytics.patterns.discordDetected) {
-                        console.log(`🚨 PRICE DISCORD DETECTED!`);
-                    }
-                    if (Math.abs(advancedAnalytics.gex.totalGEX) > 100000) {
-                        console.log(`🚨 HIGH GAMMA EXPOSURE: ${advancedAnalytics.gex.totalGEX.toFixed(0)}`);
-                    }
-                }
             }
             
-            if (breakoutSignals.signalCount > 0) {
-                console.log(`🚨 Generated ${breakoutSignals.signalCount} breakout signals: ${breakoutSignals.primarySignalType} (${breakoutSignals.signalDirection})`);
+            // COMPREHENSIVE SIGNAL LOGGING - Log all signal strengths
+            console.log(`\n📊 === COMPREHENSIVE SIGNAL ANALYSIS (${new Date().toLocaleTimeString()}) ===`);
+            console.log(`💰 Spot Price: ${data.spot_price} | ATM Strike: ${data.atm_strike}`);
+            
+            // 1. Original Breakout Signals
+            if (breakoutSignals && breakoutSignals.signalCount > 0) {
+                console.log(`🚨 ORIGINAL BREAKOUT SIGNALS: ${breakoutSignals.signalCount} detected`);
+                console.log(`   Primary: ${breakoutSignals.primarySignalType} (${breakoutSignals.signalDirection})`);
+                console.log(`   Strength: ${breakoutSignals.signalStrength} | Confidence: ${breakoutSignals.signalCount}`);
+                breakoutSignals.signals.forEach((signal, index) => {
+                    console.log(`   Signal ${index + 1}: ${signal.type} - ${signal.message}`);
+                });
+            } else {
+                console.log(`🔍 ORIGINAL BREAKOUT SIGNALS: No signals detected`);
             }
             
+            // 2. Enhanced Breakout Signals
             if (enhancedBreakoutSignals && enhancedBreakoutSignals.length > 0) {
-                console.log(`🎯 Generated ${enhancedBreakoutSignals.length} enhanced breakout signals`);
+                console.log(`🎯 ENHANCED BREAKOUT SIGNALS: ${enhancedBreakoutSignals.length} detected`);
+                enhancedBreakoutSignals.forEach((signal, index) => {
+                    console.log(`   Enhanced ${index + 1}: ${signal.type} (${signal.direction}) - Confidence: ${(signal.confidence * 100).toFixed(0)}% | Strength: ${signal.strength.toFixed(2)}`);
+                });
                 
                 // Log high confidence signals
                 const highConfidenceSignals = enhancedBreakoutSignals.filter(s => s.confidence >= 0.8);
                 if (highConfidenceSignals.length > 0) {
-                    console.log(`⚡ HIGH CONFIDENCE SIGNALS: ${highConfidenceSignals.map(s => s.type).join(', ')}`);
+                    console.log(`⚡ HIGH CONFIDENCE ENHANCED: ${highConfidenceSignals.map(s => `${s.type}(${(s.confidence * 100).toFixed(0)}%)`).join(', ')}`);
                 }
+            } else {
+                console.log(`🎯 ENHANCED BREAKOUT SIGNALS: No signals detected`);
             }
+            
+            // 3. Advanced Analytics
+            if (advancedAnalytics) {
+                console.log(`🔬 ADVANCED ANALYTICS:`);
+                console.log(`   IV Skew: ${advancedAnalytics.ivSkew?.overallSkew?.toFixed(2) || 'N/A'} (velocity: ${advancedAnalytics.ivSkew?.skewVelocity?.toFixed(2) || 'N/A'})`);
+                console.log(`   GEX: ${advancedAnalytics.gex?.totalGEX?.toFixed(0) || 'N/A'} (zone: ${advancedAnalytics.gex?.dominantGammaZone || 'N/A'})`);
+                console.log(`   Zero Gamma: ${advancedAnalytics.gex?.zeroGammaLevel?.toFixed(0) || 'N/A'} | Max Pain: ${advancedAnalytics.gex?.maxPainLevel?.toFixed(0) || 'N/A'}`);
+                console.log(`   OI Clusters: ${advancedAnalytics.oiClusters?.clusters?.length || 0} detected`);
+                console.log(`   Pattern: ${advancedAnalytics.patterns?.patternType || 'normal'} (confidence: ${((advancedAnalytics.patterns?.confidence || 0) * 100).toFixed(0)}%)`);
+                
+                // Alert on significant findings
+                if (advancedAnalytics.oiClusters?.clusterBreakAlert) {
+                    console.log(`🚨 ALERT: OI CLUSTER BREAK DETECTED!`);
+                }
+                if (advancedAnalytics.patterns?.discordDetected) {
+                    console.log(`🚨 ALERT: PRICE DISCORD DETECTED!`);
+                }
+                if (Math.abs(advancedAnalytics.gex?.totalGEX || 0) > 100000) {
+                    console.log(`🚨 ALERT: HIGH GAMMA EXPOSURE: ${advancedAnalytics.gex?.totalGEX?.toFixed(0)}`);
+                }
+                if (Math.abs(advancedAnalytics.ivSkew?.skewVelocity || 0) > 1) {
+                    console.log(`🚨 ALERT: RAPID SKEW CHANGE: ${advancedAnalytics.ivSkew?.skewVelocity?.toFixed(2)}`);
+                }
+            } else {
+                console.log(`🔬 ADVANCED ANALYTICS: Not available (function not found)`);
+            }
+            
+            // 4. Signal Summary
+            const totalSignals = (breakoutSignals?.signalCount || 0) + (enhancedBreakoutSignals?.length || 0);
+            const hasAdvancedAlerts = advancedAnalytics && (
+                advancedAnalytics.oiClusters?.clusterBreakAlert ||
+                advancedAnalytics.patterns?.discordDetected ||
+                Math.abs(advancedAnalytics.gex?.totalGEX || 0) > 100000 ||
+                Math.abs(advancedAnalytics.ivSkew?.skewVelocity || 0) > 1
+            );
+            
+            console.log(`📈 SIGNAL SUMMARY: ${totalSignals} total signals | Advanced alerts: ${hasAdvancedAlerts ? 'YES' : 'NO'}`);
+            console.log(`📊 === END SIGNAL ANALYSIS ===\n`);
             
         } catch (signalError) {
             console.warn('⚠️  Failed to generate signals/analytics:', signalError.message);
+            console.log(`🔍 Signal Error Details:`, signalError);
         }
 
         // Try to save to Google Sheets first (with all analytics)
@@ -1853,6 +1898,85 @@ function getPCRInterpretation(pcr) {
 function calculateAverage(arr) {
     return arr.reduce((sum, val) => sum + val, 0) / arr.length;
 }
+
+// Debug endpoint to check signal generation status
+app.get('/api/debug-signals', async (req, res) => {
+    try {
+        const debugInfo = {
+            timestamp: new Date().toISOString(),
+            latestDataAvailable: !!latestOptionData,
+            spotPrice: latestOptionData?.spot_price || null,
+            functionsAvailable: {
+                breakoutSignalGenerator: typeof breakoutSignalGenerator !== 'undefined',
+                generateEnhancedBreakoutSignals: typeof generateEnhancedBreakoutSignals !== 'undefined',
+                generateAdvancedAnalytics: typeof generateAdvancedAnalytics !== 'undefined'
+            },
+            historicalDataPoints: 0,
+            lastSignalGeneration: null
+        };
+
+        // Check historical data
+        try {
+            const historicalData = getRecentHistoricalData(10);
+            debugInfo.historicalDataPoints = historicalData ? Object.keys(historicalData).length : 0;
+        } catch (error) {
+            debugInfo.historicalDataError = error.message;
+        }
+
+        // Try to generate signals if data is available
+        if (latestOptionData) {
+            try {
+                const historicalData = getRecentHistoricalData(50);
+                
+                // Test original signals
+                const breakoutSignals = breakoutSignalGenerator.generateBreakoutSignals(latestOptionData, historicalData);
+                debugInfo.lastSignalGeneration = {
+                    originalSignals: {
+                        count: breakoutSignals?.signalCount || 0,
+                        primaryType: breakoutSignals?.primarySignalType || null,
+                        direction: breakoutSignals?.signalDirection || null
+                    },
+                    enhancedSignals: null,
+                    advancedAnalytics: null
+                };
+
+                // Test enhanced signals
+                if (typeof generateEnhancedBreakoutSignals === 'function') {
+                    const enhancedSignals = generateEnhancedBreakoutSignals(latestOptionData, historicalData);
+                    debugInfo.lastSignalGeneration.enhancedSignals = {
+                        count: enhancedSignals?.length || 0,
+                        highConfidence: enhancedSignals?.filter(s => s.confidence >= 0.8).length || 0
+                    };
+                }
+
+                // Test advanced analytics
+                if (typeof generateAdvancedAnalytics === 'function') {
+                    const analytics = generateAdvancedAnalytics(latestOptionData, historicalData);
+                    debugInfo.lastSignalGeneration.advancedAnalytics = {
+                        ivSkew: analytics?.ivSkew?.overallSkew || null,
+                        gex: analytics?.gex?.totalGEX || null,
+                        oiClusters: analytics?.oiClusters?.clusters?.length || 0,
+                        patterns: analytics?.patterns?.patternType || null
+                    };
+                }
+
+            } catch (signalError) {
+                debugInfo.signalGenerationError = signalError.message;
+            }
+        }
+
+        res.json({
+            success: true,
+            debug: debugInfo
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
 
 // Helper functions for advanced analytics interpretations
 function getIVSkewInterpretation(skew) {
